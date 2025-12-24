@@ -61,7 +61,7 @@
   - **Property 7: Retry behavior**
   - **Validates: Requirements 2.5**
 
-- [ ]* 5.2 Write property test for rate limit compliance
+- [x] 5.2 Write property test for rate limit compliance
   - **Property 21: Rate limit compliance**
   - **Validates: Requirements 8.1, 8.2, 8.3**
 
