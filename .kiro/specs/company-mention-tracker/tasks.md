@@ -113,7 +113,7 @@ This implementation plan tracks the development of a Company Mention Tracker sys
   - Implement daily breakdown generation
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7_
 
-- [ ]* 7.1 Write property test for trend calculation completeness
+- [x] 7.1 Write property test for trend calculation completeness
   - **Property 10: Trend calculation completeness**
   - **Validates: Requirements 4.1, 4.2**
 
