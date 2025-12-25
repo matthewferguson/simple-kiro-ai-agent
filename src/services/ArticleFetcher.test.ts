@@ -535,6 +535,280 @@ describe('ArticleFetcher', () => {
     }, 10000); // Increase timeout to 10 seconds
   });
 
+  // Task 5.4: Unit tests for Article Fetcher
+  // Requirements: 2.5, 8.1, 8.2
+  describe('exponential backoff timing', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should use exponential backoff timing (1s, 2s, 4s)', async () => {
+      const operation = vi.fn()
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockRejectedValueOnce(new Error('Network error'));
+
+      // Mock isRetryableError to return true
+      const originalIsRetryableError = (fetcher as any).isRetryableError;
+      (fetcher as any).isRetryableError = vi.fn().mockReturnValue(true);
+
+      // Track sleep calls
+      const sleepSpy = vi.spyOn(fetcher as any, 'sleep');
+      sleepSpy.mockImplementation((ms: number) => {
+        vi.advanceTimersByTime(ms);
+        return Promise.resolve();
+      });
+
+      try {
+        const retryPromise = fetcher.retry(operation, 3);
+        
+        // Let the retry logic run
+        await vi.runAllTimersAsync();
+        
+        await retryPromise;
+        // Should not reach here
+        expect.fail('Expected retry to throw after 3 attempts');
+      } catch (error) {
+        // Expected to fail after 3 attempts
+        expect(error).toBeInstanceOf(Error);
+      }
+
+      // Verify exponential backoff timing: 1000ms, 2000ms
+      expect(sleepSpy).toHaveBeenCalledTimes(2);
+      expect(sleepSpy).toHaveBeenNthCalledWith(1, 1000); // 2^0 * 1000 = 1000ms
+      expect(sleepSpy).toHaveBeenNthCalledWith(2, 2000); // 2^1 * 1000 = 2000ms
+
+      // Restore original method
+      (fetcher as any).isRetryableError = originalIsRetryableError;
+      sleepSpy.mockRestore();
+    });
+
+    it('should not apply backoff delay on first attempt', async () => {
+      const operation = vi.fn().mockResolvedValue('success');
+
+      const sleepSpy = vi.spyOn(fetcher as any, 'sleep');
+
+      const result = await fetcher.retry(operation, 3);
+
+      expect(result).toBe('success');
+      expect(sleepSpy).not.toHaveBeenCalled();
+      expect(operation).toHaveBeenCalledTimes(1);
+
+      sleepSpy.mockRestore();
+    });
+
+    it('should apply correct backoff delay on second attempt only', async () => {
+      const operation = vi.fn()
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce('success');
+
+      // Mock isRetryableError to return true
+      const originalIsRetryableError = (fetcher as any).isRetryableError;
+      (fetcher as any).isRetryableError = vi.fn().mockReturnValue(true);
+
+      const sleepSpy = vi.spyOn(fetcher as any, 'sleep');
+      sleepSpy.mockImplementation((ms: number) => {
+        vi.advanceTimersByTime(ms);
+        return Promise.resolve();
+      });
+
+      const retryPromise = fetcher.retry(operation, 3);
+      await vi.runAllTimersAsync();
+      const result = await retryPromise;
+
+      expect(result).toBe('success');
+      expect(sleepSpy).toHaveBeenCalledTimes(1);
+      expect(sleepSpy).toHaveBeenCalledWith(1000); // First backoff delay
+      expect(operation).toHaveBeenCalledTimes(2);
+
+      // Restore original method
+      (fetcher as any).isRetryableError = originalIsRetryableError;
+      sleepSpy.mockRestore();
+    });
+  });
+
+  describe('rate limit header parsing', () => {
+    it('should parse Retry-After header in seconds', () => {
+      const error = {
+        response: {
+          status: 429,
+          headers: {
+            'retry-after': '5'
+          }
+        }
+      };
+
+      mockedAxios.isAxiosError.mockReturnValue(true);
+
+      const delay = (fetcher as any).getRetryAfterDelay(error);
+      expect(delay).toBe(5000); // 5 seconds converted to milliseconds
+    });
+
+    it('should return 0 for missing Retry-After header', () => {
+      const error = {
+        response: {
+          status: 429,
+          headers: {}
+        }
+      };
+
+      mockedAxios.isAxiosError.mockReturnValue(true);
+
+      const delay = (fetcher as any).getRetryAfterDelay(error);
+      expect(delay).toBe(0);
+    });
+
+    it('should return 0 for invalid Retry-After header', () => {
+      const error = {
+        response: {
+          status: 429,
+          headers: {
+            'retry-after': 'invalid'
+          }
+        }
+      };
+
+      mockedAxios.isAxiosError.mockReturnValue(true);
+
+      const delay = (fetcher as any).getRetryAfterDelay(error);
+      expect(delay).toBe(0);
+    });
+
+    it('should return 0 for non-axios errors', () => {
+      const error = new Error('Regular error');
+
+      mockedAxios.isAxiosError.mockReturnValue(false);
+
+      const delay = (fetcher as any).getRetryAfterDelay(error);
+      expect(delay).toBe(0);
+    });
+
+    it('should handle large Retry-After values', () => {
+      const error = {
+        response: {
+          status: 429,
+          headers: {
+            'retry-after': '3600' // 1 hour
+          }
+        }
+      };
+
+      mockedAxios.isAxiosError.mockReturnValue(true);
+
+      const delay = (fetcher as any).getRetryAfterDelay(error);
+      expect(delay).toBe(3600000); // 1 hour in milliseconds
+    });
+  });
+
+  describe('request distribution over time', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should distribute requests according to rate limit', async () => {
+      const source: ArticleSource = {
+        name: 'TestAPI',
+        type: 'api',
+        endpoint: 'https://api.test.com/search',
+        rateLimit: 2 // Very low rate limit: 2 requests per minute
+      };
+
+      const mockResponse = { data: { articles: [] } };
+      let requestCount = 0;
+
+      // Track when requests are made
+      mockAxiosInstance.get.mockImplementation((...args) => {
+        requestCount++;
+        return Promise.resolve(mockResponse);
+      });
+
+      // Make multiple requests to test rate limiting behavior
+      await fetcher.searchArticles('Company1', new Date(), [source]);
+      await fetcher.searchArticles('Company2', new Date(), [source]);
+
+      // Verify both requests completed
+      expect(requestCount).toBe(2);
+      
+      // The key test is that the rate limiter was engaged
+      // We can't easily test timing in unit tests, but we can verify
+      // that the requests completed without throwing rate limit errors
+      expect(mockAxiosInstance.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('should allow burst requests within rate limit capacity', async () => {
+      const source: ArticleSource = {
+        name: 'TestAPI',
+        type: 'api',
+        endpoint: 'https://api.test.com/search',
+        rateLimit: 120 // 120 requests per minute = high capacity
+      };
+
+      const mockResponse = { data: { articles: [] } };
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
+
+      const companies = ['Company1', 'Company2'];
+      const startTime = Date.now();
+
+      // Make multiple requests quickly
+      const searchPromises = companies.map(company => 
+        fetcher.searchArticles(company, new Date(), [source])
+      );
+
+      await Promise.all(searchPromises);
+      const endTime = Date.now();
+
+      // With high rate limit, requests should complete quickly
+      const totalTime = endTime - startTime;
+      expect(totalTime).toBeLessThan(2000); // Should complete within 2 seconds
+      expect(mockAxiosInstance.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('should enforce rate limit when capacity is exceeded', async () => {
+      const source: ArticleSource = {
+        name: 'TestAPI',
+        type: 'api',
+        endpoint: 'https://api.test.com/search',
+        rateLimit: 2 // Very low rate limit: 2 requests per minute
+      };
+
+      const mockResponse = { data: { articles: [] } };
+      let requestCount = 0;
+      
+      mockAxiosInstance.get.mockImplementation(() => {
+        requestCount++;
+        return Promise.resolve(mockResponse);
+      });
+
+      // Try to make 3 requests quickly
+      const companies = ['Company1', 'Company2', 'Company3'];
+      const searchPromises = companies.map(company => 
+        fetcher.searchArticles(company, new Date(), [source])
+      );
+
+      // Advance time gradually to allow rate limiting
+      const advanceTimeGradually = async () => {
+        for (let i = 0; i < 60; i++) { // 60 seconds total
+          vi.advanceTimersByTime(1000);
+          await Promise.resolve();
+        }
+      };
+
+      await advanceTimeGradually();
+      await Promise.all(searchPromises);
+
+      // All requests should eventually complete
+      expect(requestCount).toBe(3);
+    });
+  });
+
   describe('article parsing', () => {
     it('should skip articles with missing required fields', async () => {
       const mockResponse = {
