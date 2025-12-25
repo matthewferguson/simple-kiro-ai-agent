@@ -88,7 +88,7 @@ This implementation plan tracks the development of a Company Mention Tracker sys
   - Implement multi-company mention detection in single articles
   - _Requirements: 2.2, 2.3, 3.1, 3.2, 3.3_
 
-- [ ]* 6.1 Write property test for search result relevance
+- [x] 6.1 Write property test for search result relevance
   - **Property 4: Search result relevance**
   - **Validates: Requirements 2.2**
 
