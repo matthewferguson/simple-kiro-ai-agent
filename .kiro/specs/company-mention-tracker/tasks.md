@@ -96,7 +96,7 @@ This implementation plan tracks the development of a Company Mention Tracker sys
   - **Property 5: Article data completeness**
   - **Validates: Requirements 2.3**
 
-- [ ]* 6.3 Write property test for mention counting correctness
+- [x] 6.3 Write property test for mention counting correctness
   - **Property 8: Mention counting correctness**
   - **Validates: Requirements 3.1, 3.2, 3.3**
 

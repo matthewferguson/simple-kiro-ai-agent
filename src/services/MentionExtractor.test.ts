@@ -490,5 +490,97 @@ describe('MentionExtractor', () => {
         { numRuns: 100 }
       );
     });
+
+    it('Property 8: Mention counting correctness - For any set of articles and companies, the mention count for each company should equal the number of articles containing that company, with each article contributing exactly 1 mention per company it contains', () => {
+      // Feature: company-mention-tracker, Property 8: Mention counting correctness
+      // **Validates: Requirements 3.1, 3.2, 3.3**
+      
+      // Generate a set of company names (avoid single characters and special chars that might cause issues)
+      const companyNamesArbitrary = fc.array(
+        fc.string({ minLength: 2, maxLength: 20 }).filter(s => {
+          const trimmed = s.trim();
+          return trimmed.length >= 2 && /^[a-zA-Z][a-zA-Z0-9\s&.-]*[a-zA-Z0-9]$/.test(trimmed);
+        }),
+        { minLength: 1, maxLength: 5 }
+      ).map(companies => [...new Set(companies.map(c => c.trim()))]); // Remove duplicates
+
+      // Generate articles with controlled company mentions
+      const articlesWithMentionsArbitrary = fc.tuple(companyNamesArbitrary, fc.integer({ min: 1, max: 10 }))
+        .chain(([companies, numArticles]) => {
+          return fc.array(
+            fc.record({
+              mentionedCompanies: fc.array(fc.constantFrom(...companies), { minLength: 0, maxLength: Math.min(3, companies.length) })
+                .map(companies => [...new Set(companies)]) // Remove duplicates
+            }),
+            { minLength: numArticles, maxLength: numArticles }
+          ).map(articlesData => {
+            const articles = articlesData.map(({ mentionedCompanies }, index) => {
+              // Create article content that explicitly includes only the mentioned companies
+              // Use controlled, predictable content to avoid accidental matches
+              const baseTitle = `Article ${index + 1} about technology`;
+              const baseExcerpt = `This is article ${index + 1} discussing various topics`;
+              
+              const mentionText = mentionedCompanies.length > 0 
+                ? ` The companies ${mentionedCompanies.join(' and ')} are mentioned in this article.` 
+                : ' No specific companies are mentioned in this article.';
+              
+              return {
+                title: baseTitle + mentionText,
+                url: `https://example.com/article-${index + 1}`,
+                publishedDate: new Date('2024-01-01T00:00:00Z'),
+                source: 'TestSource',
+                excerpt: baseExcerpt + mentionText
+              };
+            });
+            
+            return { articles, companies, articlesData };
+          });
+        });
+
+      fc.assert(
+        fc.property(articlesWithMentionsArbitrary, ({ articles, companies, articlesData }) => {
+          const extractor = new MentionExtractor();
+          
+          // Test each company individually
+          for (const company of companies) {
+            // Count mentions using the countMentions method
+            const actualCount = extractor.countMentions(articles, company);
+            
+            // Calculate expected count: number of articles that should contain this company
+            const expectedCount = articlesData.filter(({ mentionedCompanies }) => 
+              mentionedCompanies.includes(company)
+            ).length;
+            
+            // Requirement 3.1, 3.2: Each article contributes exactly 1 mention per company
+            expect(actualCount).toBe(expectedCount);
+          }
+          
+          // Test extractMentions method for multi-company detection (Requirement 3.3)
+          for (let i = 0; i < articles.length; i++) {
+            const article = articles[i];
+            const expectedMentionedCompanies = articlesData[i].mentionedCompanies;
+            
+            const mentions = extractor.extractMentions(article, companies);
+            
+            // Should find exactly the companies that were intentionally mentioned
+            expect(mentions.length).toBe(expectedMentionedCompanies.length);
+            
+            // Each mention should have exactly 1 count (Requirement 3.2)
+            mentions.forEach(mention => {
+              expect(mention.mentionCount).toBe(1);
+              expect(expectedMentionedCompanies).toContain(mention.company);
+            });
+            
+            // All expected companies should be found
+            expectedMentionedCompanies.forEach(expectedCompany => {
+              expect(mentions.some(m => m.company === expectedCompany)).toBe(true);
+            });
+          }
+          
+          return true;
+        }),
+        { numRuns: 100 }
+      );
+    });
   });
 });
