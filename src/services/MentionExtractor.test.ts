@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import * as fc from 'fast-check';
 import { MentionExtractor } from './MentionExtractor.js';
 import { Article, CompanyMention } from '../models/types.js';
 
@@ -414,6 +415,80 @@ describe('MentionExtractor', () => {
       
       expect(mentions).toHaveLength(1);
       expect(mentions[0].company).toBe('Amazon');
+    });
+  });
+
+  // Property-based tests
+  describe('Property-based tests', () => {
+    it('Property 5: Article data completeness - For any extracted article, it should contain all required fields: title, publication date, source URL, and excerpt', () => {
+      // Feature: company-mention-tracker, Property 5: Article data completeness
+      // **Validates: Requirements 2.3**
+      
+      const rawArticleArbitrary = fc.record({
+        // Generate valid non-empty strings (no whitespace-only)
+        title: fc.string({ minLength: 1 }).filter(s => s.trim().length > 0),
+        url: fc.webUrl(),
+        source: fc.string({ minLength: 1 }).filter(s => s.trim().length > 0),
+        excerpt: fc.string({ minLength: 1 }).filter(s => s.trim().length > 0),
+        publishedDate: fc.oneof(
+          fc.date({ min: new Date('2000-01-01'), max: new Date('2030-12-31') }),
+          fc.date({ min: new Date('2000-01-01'), max: new Date('2030-12-31') }).map(d => d.toISOString()),
+          fc.integer({ min: 946684800, max: 1924991999 }), // Unix timestamp in seconds (2000-2030)
+          fc.date({ min: new Date('2000-01-01'), max: new Date('2030-12-31') }).map(d => d.getTime()) // Millisecond timestamp
+        )
+      }).chain(baseFields => {
+        // Randomly choose field names for each required field
+        const titleFieldName = fc.constantFrom('title', 'headline', 'name');
+        const urlFieldName = fc.constantFrom('url', 'link', 'href');
+        const sourceFieldName = fc.constantFrom('source', 'publisher', 'site');
+        const excerptFieldName = fc.constantFrom('excerpt', 'description', 'summary', 'snippet');
+        const dateFieldName = fc.constantFrom('publishedDate', 'published', 'date', 'pubDate', 'publishedAt');
+        
+        return fc.record({
+          titleField: titleFieldName,
+          urlField: urlFieldName,
+          sourceField: sourceFieldName,
+          excerptField: excerptFieldName,
+          dateField: dateFieldName
+        }).map(fieldNames => ({
+          [fieldNames.titleField]: baseFields.title,
+          [fieldNames.urlField]: baseFields.url,
+          [fieldNames.sourceField]: baseFields.source,
+          [fieldNames.excerptField]: baseFields.excerpt,
+          [fieldNames.dateField]: baseFields.publishedDate
+        }));
+      });
+
+      fc.assert(
+        fc.property(rawArticleArbitrary, (rawArticle) => {
+          const extractor = new MentionExtractor();
+          
+          // When extracting article data from any valid raw article
+          const extractedArticle = extractor.extractArticleData(rawArticle);
+          
+          // Then the extracted article should contain all required fields
+          expect(extractedArticle).toBeDefined();
+          expect(typeof extractedArticle.title).toBe('string');
+          expect(extractedArticle.title.trim().length).toBeGreaterThan(0);
+          
+          expect(typeof extractedArticle.url).toBe('string');
+          expect(extractedArticle.url.trim().length).toBeGreaterThan(0);
+          // Validate URL format
+          expect(() => new URL(extractedArticle.url)).not.toThrow();
+          
+          expect(typeof extractedArticle.source).toBe('string');
+          expect(extractedArticle.source.trim().length).toBeGreaterThan(0);
+          
+          expect(typeof extractedArticle.excerpt).toBe('string');
+          expect(extractedArticle.excerpt.trim().length).toBeGreaterThan(0);
+          
+          expect(extractedArticle.publishedDate).toBeInstanceOf(Date);
+          expect(isNaN(extractedArticle.publishedDate.getTime())).toBe(false);
+          
+          return true;
+        }),
+        { numRuns: 100 }
+      );
     });
   });
 });

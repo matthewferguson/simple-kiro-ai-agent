@@ -92,7 +92,7 @@ This implementation plan tracks the development of a Company Mention Tracker sys
   - **Property 4: Search result relevance**
   - **Validates: Requirements 2.2**
 
-- [ ]* 6.2 Write property test for article data completeness
+- [x] 6.2 Write property test for article data completeness
   - **Property 5: Article data completeness**
   - **Validates: Requirements 2.3**
 
