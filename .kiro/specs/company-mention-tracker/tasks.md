@@ -117,7 +117,7 @@ This implementation plan tracks the development of a Company Mention Tracker sys
   - **Property 10: Trend calculation completeness**
   - **Validates: Requirements 4.1, 4.2**
 
-- [ ]* 7.2 Write property test for trend classification validity
+- [x] 7.2 Write property test for trend classification validity
   - **Property 11: Trend classification validity**
   - **Validates: Requirements 4.3, 4.4, 4.5, 4.6, 4.7**
 

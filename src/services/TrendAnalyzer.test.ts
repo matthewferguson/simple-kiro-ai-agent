@@ -264,5 +264,180 @@ describe('TrendAnalyzer', () => {
         );
       });
     });
+
+    describe('Property 11: Trend classification validity', () => {
+      // Feature: company-mention-tracker, Property 11: Trend classification validity
+      it('should classify trends according to the specified rules: stable when variance < 10%, increasing when growth > 20%, decreasing when decline > 20%, and volatile otherwise', () => {
+        // Generator for valid company names
+        const validCompanyName = fc.string({ minLength: 1, maxLength: 50 })
+          .filter(name => name.trim().length > 0)
+          .map(name => name.replace(/[^a-zA-Z0-9\s\-\.'&]/g, 'A'))
+          .filter(name => name.trim().length > 0);
+
+        // Generator for mention counts (non-negative integers)
+        const mentionCount = fc.integer({ min: 0, max: 1000 });
+
+        // Generator for 7 consecutive days of snapshots for a single company
+        const sevenDaySnapshots = fc.tuple(
+          validCompanyName,
+          fc.array(mentionCount, { minLength: 7, maxLength: 7 }),
+          fc.date({ min: new Date('2020-01-01'), max: new Date('2024-12-31') })
+        ).map(([company, counts, startDate]) => {
+          return counts.map((count, index) => {
+            const date = new Date(startDate);
+            date.setDate(date.getDate() + index);
+            
+            const snapshot: DailySnapshot = {
+              company,
+              date,
+              mentionCount: count,
+              articles: [],
+              status: 'complete'
+            };
+            return snapshot;
+          });
+        });
+
+        fc.assert(
+          fc.property(
+            sevenDaySnapshots,
+            (snapshots) => {
+              // Analyze the trend
+              const result = analyzer.analyzeTrend(snapshots);
+
+              // Extract mention counts and calculate expected classification
+              const counts = snapshots.map(s => s.mentionCount);
+              const firstCount = counts[0];
+              const lastCount = counts[counts.length - 1];
+              
+              // Calculate percentage change from start to end
+              const percentageChange = firstCount === 0 
+                ? (lastCount > 0 ? 100 : 0)
+                : ((lastCount - firstCount) / firstCount) * 100;
+
+              // Calculate coefficient of variation (standard deviation / mean)
+              const mean = counts.reduce((sum, count) => sum + count, 0) / counts.length;
+              const variance = counts.reduce((sum, count) => sum + Math.pow(count - mean, 2), 0) / counts.length;
+              const standardDeviation = Math.sqrt(variance);
+              const coefficientOfVariation = mean === 0 ? 0 : (standardDeviation / mean) * 100;
+
+              // Verify classification follows the rules from requirements 4.3, 4.4, 4.5, 4.6, 4.7
+              
+              // Requirement 4.4: Stable when variance < 10%
+              if (coefficientOfVariation < 10) {
+                expect(result.classification).toBe('stable');
+              }
+              // Requirement 4.5: Increasing when growth > 20%
+              else if (percentageChange > 20) {
+                expect(result.classification).toBe('increasing');
+              }
+              // Requirement 4.6: Decreasing when decline > 20%
+              else if (percentageChange < -20) {
+                expect(result.classification).toBe('decreasing');
+              }
+              // Requirement 4.7: Volatile when fluctuating without clear direction
+              else {
+                expect(result.classification).toBe('volatile');
+              }
+
+              // Verify the classification is exactly one of the valid values
+              const validClassifications: TrendClassification[] = ['increasing', 'decreasing', 'stable', 'volatile'];
+              expect(validClassifications).toContain(result.classification);
+
+              // Verify statistics match our calculations
+              expect(result.statistics.percentageChange).toBeCloseTo(percentageChange, 5);
+              expect(result.statistics.standardDeviation).toBeCloseTo(standardDeviation, 5);
+
+              // Additional validation: ensure classification is deterministic
+              // Running the same analysis twice should yield the same result
+              const result2 = analyzer.analyzeTrend(snapshots);
+              expect(result2.classification).toBe(result.classification);
+            }
+          ),
+          { numRuns: 100 }
+        );
+      });
+
+      // Additional property test for edge cases in trend classification
+      it('should handle edge cases in trend classification correctly', () => {
+        // Generator for edge case scenarios
+        const edgeCaseSnapshots = fc.oneof(
+          // All zeros (stable)
+          fc.constant(Array.from({ length: 7 }, (_, i) => ({
+            company: 'TestCompany',
+            date: new Date(`2023-12-${String(i + 1).padStart(2, '0')}`),
+            mentionCount: 0,
+            articles: [],
+            status: 'complete' as const
+          }))),
+          
+          // Single spike (volatile)
+          fc.integer({ min: 1, max: 100 }).map(spike => 
+            Array.from({ length: 7 }, (_, i) => ({
+              company: 'TestCompany',
+              date: new Date(`2023-12-${String(i + 1).padStart(2, '0')}`),
+              mentionCount: i === 3 ? spike : 0, // Spike in the middle
+              articles: [],
+              status: 'complete' as const
+            }))
+          ),
+          
+          // Exact boundary cases for percentage change
+          fc.constant(Array.from({ length: 7 }, (_, i) => ({
+            company: 'TestCompany',
+            date: new Date(`2023-12-${String(i + 1).padStart(2, '0')}`),
+            mentionCount: i === 0 ? 10 : (i === 6 ? 12 : 10), // Exactly 20% increase
+            articles: [],
+            status: 'complete' as const
+          }))),
+          
+          // Single data point (should be stable)
+          fc.integer({ min: 0, max: 100 }).map(count => [{
+            company: 'TestCompany',
+            date: new Date('2023-12-01'),
+            mentionCount: count,
+            articles: [],
+            status: 'complete' as const
+          }])
+        );
+
+        fc.assert(
+          fc.property(
+            edgeCaseSnapshots,
+            (snapshots) => {
+              const result = analyzer.analyzeTrend(snapshots);
+
+              // Verify classification is always one of the valid values
+              const validClassifications: TrendClassification[] = ['increasing', 'decreasing', 'stable', 'volatile'];
+              expect(validClassifications).toContain(result.classification);
+
+              // Verify single data point is always classified as stable
+              if (snapshots.length === 1) {
+                expect(result.classification).toBe('stable');
+              }
+
+              // Verify all zeros scenario
+              if (snapshots.every(s => s.mentionCount === 0)) {
+                // All zeros should be stable (coefficient of variation is 0)
+                expect(result.classification).toBe('stable');
+              }
+
+              // Verify statistics are valid numbers
+              expect(typeof result.statistics.totalMentions).toBe('number');
+              expect(typeof result.statistics.averageDaily).toBe('number');
+              expect(typeof result.statistics.percentageChange).toBe('number');
+              expect(typeof result.statistics.standardDeviation).toBe('number');
+              
+              // Verify no NaN values
+              expect(Number.isNaN(result.statistics.totalMentions)).toBe(false);
+              expect(Number.isNaN(result.statistics.averageDaily)).toBe(false);
+              expect(Number.isNaN(result.statistics.percentageChange)).toBe(false);
+              expect(Number.isNaN(result.statistics.standardDeviation)).toBe(false);
+            }
+          ),
+          { numRuns: 100 }
+        );
+      });
+    });
   });
 });
