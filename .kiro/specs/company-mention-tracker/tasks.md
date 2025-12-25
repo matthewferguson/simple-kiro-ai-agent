@@ -75,7 +75,7 @@ This implementation plan tracks the development of a Company Mention Tracker sys
   - **Property 22: Block detection and response**
   - **Validates: Requirements 8.4**
 
-- [ ]* 5.4 Write unit tests for Article Fetcher
+- [x] 5.4 Write unit tests for Article Fetcher
   - Test exponential backoff timing
   - Test rate limit header parsing
   - Test request distribution over time
