@@ -119,7 +119,8 @@ export class MentionExtractor {
       return false;
     }
 
-    const normalizedCompany = company.trim().toLowerCase();
+    // Normalize the company name the same way as the searchable text
+    const normalizedCompany = company.trim().toLowerCase().replace(/\s+/g, ' ');
     
     // Handle multi-word company names by checking for the complete phrase
     // Use word boundaries to avoid partial matches (e.g., "Apple" shouldn't match "Pineapple")
