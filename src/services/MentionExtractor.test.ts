@@ -418,6 +418,168 @@ describe('MentionExtractor', () => {
     });
   });
 
+  // Unit tests for task 6.4 - specific scenarios
+  describe('Unit tests for task 6.4', () => {
+    it('should handle article with multiple company mentions', () => {
+      const article: Article = {
+        title: 'Tech giants Apple, Google, and Microsoft compete in AI',
+        url: 'https://example.com/tech-competition',
+        publishedDate: new Date('2024-01-15T10:00:00Z'),
+        source: 'TechNews',
+        excerpt: 'Apple, Google, and Microsoft are all investing heavily in artificial intelligence. Apple focuses on device integration, Google on search, and Microsoft on enterprise solutions.'
+      };
+
+      const companies = ['Apple', 'Google', 'Microsoft', 'Amazon', 'Tesla'];
+      const mentions = extractor.extractMentions(article, companies);
+      
+      // Should find exactly 3 companies mentioned
+      expect(mentions).toHaveLength(3);
+      
+      // Verify each company is found with exactly 1 mention count
+      const mentionedCompanies = mentions.map(m => m.company).sort();
+      expect(mentionedCompanies).toEqual(['Apple', 'Google', 'Microsoft']);
+      
+      mentions.forEach(mention => {
+        expect(mention.mentionCount).toBe(1);
+        expect(mention.article).toBe(article);
+      });
+
+      // Test countMentions for each company
+      expect(extractor.countMentions([article], 'Apple')).toBe(1);
+      expect(extractor.countMentions([article], 'Google')).toBe(1);
+      expect(extractor.countMentions([article], 'Microsoft')).toBe(1);
+      expect(extractor.countMentions([article], 'Amazon')).toBe(0);
+      expect(extractor.countMentions([article], 'Tesla')).toBe(0);
+    });
+
+    it('should handle article with no company mentions', () => {
+      const article: Article = {
+        title: 'Weather forecast shows sunny skies ahead',
+        url: 'https://example.com/weather-forecast',
+        publishedDate: new Date('2024-01-15T10:00:00Z'),
+        source: 'WeatherChannel',
+        excerpt: 'Tomorrow will be sunny with temperatures reaching 75 degrees. Perfect weather for outdoor activities and sports events.'
+      };
+
+      const companies = ['Apple', 'Google', 'Microsoft', 'Amazon', 'Tesla'];
+      const mentions = extractor.extractMentions(article, companies);
+      
+      // Should find no mentions
+      expect(mentions).toHaveLength(0);
+
+      // Test countMentions for each company should return 0
+      companies.forEach(company => {
+        expect(extractor.countMentions([article], company)).toBe(0);
+      });
+    });
+
+    it('should handle malformed article data gracefully', () => {
+      const companies = ['Apple', 'Google', 'Microsoft'];
+
+      // Test article with missing title
+      const articleMissingTitle = {
+        url: 'https://example.com/test',
+        publishedDate: new Date('2024-01-15T10:00:00Z'),
+        source: 'TestSource',
+        excerpt: 'Apple announces new features'
+      } as Article;
+
+      expect(() => {
+        extractor.extractMentions(articleMissingTitle, companies);
+      }).toThrow('Article missing required fields: title');
+
+      // Test article with empty title
+      const articleEmptyTitle: Article = {
+        title: '',
+        url: 'https://example.com/test',
+        publishedDate: new Date('2024-01-15T10:00:00Z'),
+        source: 'TestSource',
+        excerpt: 'Apple announces new features'
+      };
+
+      expect(() => {
+        extractor.extractMentions(articleEmptyTitle, companies);
+      }).toThrow('Article missing required fields: title');
+
+      // Test article with invalid URL
+      const articleInvalidUrl: Article = {
+        title: 'Apple news',
+        url: 'not-a-valid-url',
+        publishedDate: new Date('2024-01-15T10:00:00Z'),
+        source: 'TestSource',
+        excerpt: 'Apple announces new features'
+      };
+
+      expect(() => {
+        extractor.extractMentions(articleInvalidUrl, companies);
+      }).toThrow('Article URL must be a valid URL');
+
+      // Test article with invalid date
+      const articleInvalidDate = {
+        title: 'Apple news',
+        url: 'https://example.com/test',
+        publishedDate: new Date('invalid-date'),
+        source: 'TestSource',
+        excerpt: 'Apple announces new features'
+      } as Article;
+
+      expect(() => {
+        extractor.extractMentions(articleInvalidDate, companies);
+      }).toThrow('Article missing required fields: publishedDate');
+
+      // Test article with missing excerpt
+      const articleMissingExcerpt = {
+        title: 'Apple news',
+        url: 'https://example.com/test',
+        publishedDate: new Date('2024-01-15T10:00:00Z'),
+        source: 'TestSource'
+      } as Article;
+
+      expect(() => {
+        extractor.extractMentions(articleMissingExcerpt, companies);
+      }).toThrow('Article missing required fields: excerpt');
+
+      // Test article with missing source
+      const articleMissingSource = {
+        title: 'Apple news',
+        url: 'https://example.com/test',
+        publishedDate: new Date('2024-01-15T10:00:00Z'),
+        excerpt: 'Apple announces new features'
+      } as Article;
+
+      expect(() => {
+        extractor.extractMentions(articleMissingSource, companies);
+      }).toThrow('Article missing required fields: source');
+
+      // Test null article
+      expect(() => {
+        extractor.extractMentions(null as any, companies);
+      }).toThrow('Article cannot be null or undefined');
+
+      // Test undefined article
+      expect(() => {
+        extractor.extractMentions(undefined as any, companies);
+      }).toThrow('Article cannot be null or undefined');
+
+      // Test countMentions with malformed articles - should skip invalid ones and continue
+      const mixedArticles = [
+        sampleArticle, // Valid article with Apple mention
+        articleInvalidUrl, // Invalid article
+        {
+          title: 'Another Apple story',
+          url: 'https://example.com/apple-story',
+          publishedDate: new Date('2024-01-15T10:00:00Z'),
+          source: 'TechNews',
+          excerpt: 'Apple releases new product'
+        }
+      ];
+
+      // Should count only valid articles (2 out of 3)
+      const count = extractor.countMentions(mixedArticles, 'Apple');
+      expect(count).toBe(2);
+    });
+  });
+
   // Property-based tests
   describe('Property-based tests', () => {
     it('Property 5: Article data completeness - For any extracted article, it should contain all required fields: title, publication date, source URL, and excerpt', () => {
@@ -496,13 +658,29 @@ describe('MentionExtractor', () => {
       // **Validates: Requirements 3.1, 3.2, 3.3**
       
       // Generate a set of company names (avoid single characters and special chars that might cause issues)
+      // Normalize to avoid case sensitivity issues in testing
       const companyNamesArbitrary = fc.array(
         fc.string({ minLength: 2, maxLength: 20 }).filter(s => {
           const trimmed = s.trim();
           return trimmed.length >= 2 && /^[a-zA-Z][a-zA-Z0-9\s&.-]*[a-zA-Z0-9]$/.test(trimmed);
         }),
         { minLength: 1, maxLength: 5 }
-      ).map(companies => [...new Set(companies.map(c => c.trim()))]); // Remove duplicates
+      ).map(companies => {
+        // Normalize case and remove duplicates (case-insensitive)
+        const normalized = companies.map(c => c.trim());
+        const uniqueCompanies = [];
+        const seenLowercase = new Set();
+        
+        for (const company of normalized) {
+          const lowerCase = company.toLowerCase();
+          if (!seenLowercase.has(lowerCase)) {
+            seenLowercase.add(lowerCase);
+            uniqueCompanies.push(company);
+          }
+        }
+        
+        return uniqueCompanies;
+      });
 
       // Generate articles with controlled company mentions
       const articlesWithMentionsArbitrary = fc.tuple(companyNamesArbitrary, fc.integer({ min: 1, max: 10 }))
