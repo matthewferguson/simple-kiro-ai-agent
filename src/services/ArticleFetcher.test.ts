@@ -857,5 +857,87 @@ describe('ArticleFetcher', () => {
       expect(articles).toHaveLength(1);
       expect(articles[0].title).toBe('Valid Article');
     });
+
+    // Feature: company-mention-tracker, Property 4: Search result relevance
+    // **Validates: Requirements 2.2**
+    it('property test: all returned articles should contain the company name', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.record({
+            company: fc.constantFrom('Apple', 'Google', 'Microsoft', 'Amazon', 'Tesla', 'Meta', 'Netflix', 'Adobe', 'Oracle', 'Salesforce'),
+            articlesWithMention: fc.array(
+              fc.record({
+                title: fc.constantFrom(
+                  'Technology News Update',
+                  'Market Analysis Report',
+                  'Industry Development News',
+                  'Business Announcement Today',
+                  'Corporate Strategy Update',
+                  'Financial Results Released'
+                ),
+                url: fc.webUrl(),
+                publishedAt: fc.date({ min: new Date('2020-01-01'), max: new Date('2024-12-31') }).map(d => d.toISOString()),
+                description: fc.constantFrom(
+                  'This is a technology news article with important updates about the industry.',
+                  'Market analysis shows significant developments in the business sector.',
+                  'Corporate announcements reveal new strategic initiatives for growth.',
+                  'Financial results demonstrate strong performance across key metrics.',
+                  'Industry experts discuss the latest trends and future outlook.',
+                  'Business leaders share insights on market opportunities and challenges.'
+                )
+              }),
+              { minLength: 1, maxLength: 3 }
+            )
+          }),
+          async ({ company, articlesWithMention }) => {
+            // Ensure articles with mention actually contain the company name
+            const articlesWithCompanyMention = articlesWithMention.map(article => ({
+              ...article,
+              title: `${article.title} - ${company} News Update`,
+              description: `${article.description} The company ${company} announced new developments today.`
+            }));
+            
+            const mockResponse = {
+              data: {
+                articles: articlesWithCompanyMention
+              }
+            };
+
+            mockAxiosInstance.get.mockResolvedValueOnce(mockResponse);
+
+            const source: ArticleSource = {
+              name: 'TestAPI',
+              type: 'api',
+              endpoint: 'https://api.test.com/search',
+              rateLimit: 60
+            };
+
+            // Create a fresh fetcher instance for each test
+            const testFetcher = new ArticleFetcher();
+
+            const articles = await testFetcher.searchArticles(company, new Date(), [source]);
+
+            // Property: All returned articles should contain the company name
+            for (const article of articles) {
+              const searchableText = `${article.title} ${article.excerpt}`.toLowerCase();
+              const companyLower = company.toLowerCase();
+              
+              // Simple case-insensitive substring check since we know the company names are simple
+              expect(searchableText.includes(companyLower)).toBe(true);
+            }
+
+            // Additional property: Should return at least one article since we provided articles with mentions
+            expect(articles.length).toBeGreaterThan(0);
+
+            // Additional property: The number of returned articles should not exceed the input articles
+            expect(articles.length).toBeLessThanOrEqual(articlesWithCompanyMention.length);
+
+            // Clean up for next iteration
+            mockAxiosInstance.get.mockClear();
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
   });
 });
