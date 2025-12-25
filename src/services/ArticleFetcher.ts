@@ -101,6 +101,11 @@ export class ArticleFetcher {
         const articles = await this.searchSingleSource(company, date, source);
         allArticles.push(...articles);
       } catch (error) {
+        // Re-throw blocking errors immediately to stop all searches
+        if (this.isBlockedError(error)) {
+          throw error;
+        }
+        
         const searchError: SearchError = {
           timestamp: new Date(),
           message: error instanceof Error ? error.message : 'Unknown error',
@@ -124,11 +129,19 @@ export class ArticleFetcher {
     // Apply rate limiting
     await this.waitForRateLimit(source);
 
-    // Perform search with retry logic
-    return await this.retry(
-      () => this.performSearch(company, date, source),
-      3 // max attempts
-    );
+    try {
+      // Perform search with retry logic
+      return await this.retry(
+        () => this.performSearch(company, date, source),
+        3 // max attempts
+      );
+    } catch (error) {
+      // Check if this is a blocking error and handle it
+      if (this.isBlockedError(error)) {
+        this.handleBlockDetection(source, error);
+      }
+      throw error;
+    }
   }
 
   /**
@@ -338,6 +351,12 @@ export class ArticleFetcher {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Unknown error');
         
+        // Check for blocking before other error handling
+        if (this.isBlockedError(error)) {
+          // Don't retry blocked errors, throw immediately
+          throw lastError;
+        }
+        
         // Don't retry on last attempt
         if (attempt === maxAttempts) {
           break;
@@ -400,6 +419,54 @@ export class ArticleFetcher {
       return error.response?.status === 429;
     }
     return false;
+  }
+
+  /**
+   * Determines if an error indicates the system is being blocked
+   */
+  private isBlockedError(error: any): boolean {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      
+      // Check for common blocking status codes
+      if (axiosError.response?.status) {
+        const status = axiosError.response.status;
+        // 403 Forbidden, 406 Not Acceptable, 418 I'm a teapot (anti-bot), 
+        // 451 Unavailable for Legal Reasons
+        if (status === 403 || status === 406 || status === 418 || status === 451) {
+          return true;
+        }
+      }
+      
+      // Check for blocking-related error messages
+      const errorMessage = axiosError.message?.toLowerCase() || '';
+      const responseData = typeof axiosError.response?.data === 'string' 
+        ? axiosError.response.data.toLowerCase() 
+        : '';
+      
+      const blockingKeywords = [
+        'blocked', 'banned', 'access denied', 'bot detected', 
+        'captcha', 'cloudflare', 'security check', 'suspicious activity'
+      ];
+      
+      return blockingKeywords.some(keyword => 
+        errorMessage.includes(keyword) || responseData.includes(keyword)
+      );
+    }
+    
+    return false;
+  }
+
+  /**
+   * Handles block detection by pausing searches and notifying user
+   */
+  private handleBlockDetection(source: ArticleSource, error: any): void {
+    const message = `Block detected from source ${source.name}. Pausing searches to avoid further blocking.`;
+    console.error(message);
+    
+    // In a real implementation, this would notify the user through the UI
+    // For now, we log the error and throw to stop the search
+    throw new Error(`BLOCKED: ${message}`);
   }
 
   /**
