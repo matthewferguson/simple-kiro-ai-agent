@@ -100,7 +100,7 @@ This implementation plan tracks the development of a Company Mention Tracker sys
   - **Property 8: Mention counting correctness**
   - **Validates: Requirements 3.1, 3.2, 3.3**
 
-- [ ]* 6.4 Write unit tests for Mention Extractor
+- [x] 6.4 Write unit tests for Mention Extractor
   - Test article with multiple company mentions
   - Test article with no mentions
   - Test malformed article data handling
