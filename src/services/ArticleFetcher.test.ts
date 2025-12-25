@@ -396,6 +396,82 @@ describe('ArticleFetcher', () => {
         { numRuns: 5, timeout: 15000 } // Fewer runs with timeout
       );
     });
+
+    // Feature: company-mention-tracker, Property 22: Block detection and response
+    // **Validates: Requirements 8.4**
+    it('property test: block detection and response for any detected blocking', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.record({
+            blockingStatus: fc.constantFrom(403, 406, 418, 451),
+            blockingMessage: fc.constantFrom(
+              'blocked', 'banned', 'access denied', 'bot detected',
+              'captcha required', 'cloudflare protection', 'security check failed',
+              'suspicious activity detected'
+            ),
+            company: fc.string({ minLength: 3, maxLength: 15 }).filter(s => /^[a-zA-Z0-9\s]+$/.test(s.trim())),
+            sourceName: fc.string({ minLength: 3, maxLength: 10 }).filter(s => /^[a-zA-Z0-9]+$/.test(s.trim()))
+          }),
+          async ({ blockingStatus, blockingMessage, company, sourceName }) => {
+            const source: ArticleSource = {
+              name: sourceName,
+              type: 'api',
+              endpoint: 'https://api.test.com/search',
+              rateLimit: 60
+            };
+
+            // Create blocking error with proper axios error structure
+            const blockingError = new Error(`Request failed with status ${blockingStatus}: ${blockingMessage}`);
+            (blockingError as any).response = {
+              status: blockingStatus,
+              data: `Error: ${blockingMessage}`,
+              headers: {}
+            };
+            (blockingError as any).isAxiosError = true;
+            (blockingError as any).config = {};
+            (blockingError as any).request = {};
+
+            mockAxiosInstance.get.mockRejectedValue(blockingError);
+            mockedAxios.isAxiosError.mockReturnValue(true);
+
+            // Create a fresh fetcher instance for each test
+            const testFetcher = new ArticleFetcher();
+
+            try {
+              await testFetcher.searchArticles(company, new Date(), [source]);
+              
+              // If we reach here, the blocking wasn't detected - this should not happen
+              throw new Error('Expected block detection to throw an error, but no error was thrown');
+              
+            } catch (error) {
+              // Property 1: System should detect blocking and throw error (Requirement 8.4)
+              expect(error).toBeInstanceOf(Error);
+              
+              const errorMessage = (error as Error).message.toLowerCase();
+              
+              // Skip the test assertion if this is our own test failure message
+              if (errorMessage.includes('expected block detection to throw an error')) {
+                throw error; // Re-throw to fail the test properly
+              }
+              
+              // Property 2: Error message should indicate blocking was detected
+              expect(errorMessage).toMatch(/blocked|block detected|pausing searches/);
+              
+              // Property 3: Should mention the source name in the error
+              expect(errorMessage).toContain(sourceName.toLowerCase());
+              
+              // Property 4: Should not retry blocked requests (immediate failure)
+              // We can verify this by checking that the mock was called only once
+              expect(mockAxiosInstance.get).toHaveBeenCalledTimes(1);
+            }
+
+            // Clean up for next iteration
+            mockAxiosInstance.get.mockClear();
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
   });
 
   describe('error handling', () => {

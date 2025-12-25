@@ -1,10 +1,16 @@
 # Implementation Plan: Company Mention Tracker
 
+## Overview
+
+This implementation plan tracks the development of a Company Mention Tracker system. The system monitors online articles for mentions of 5 specified companies over a 7-day period and generates trend reports.
+
+## Tasks
+
 - [x] 1. Set up project structure and dependencies
   - Create directory structure for models, services, and utilities
   - Initialize TypeScript project with tsconfig.json
   - Install dependencies: fast-check for property testing, axios for HTTP requests, date-fns for date handling
-  - Set up testing framework (Jest or Vitest)
+  - Set up testing framework (Vitest)
   - _Requirements: All_
 
 - [x] 2. Implement core data models and types
@@ -65,7 +71,7 @@
   - **Property 21: Rate limit compliance**
   - **Validates: Requirements 8.1, 8.2, 8.3**
 
-- [ ]* 5.3 Write property test for block detection
+- [x] 5.3 Write property test for block detection
   - **Property 22: Block detection and response**
   - **Validates: Requirements 8.4**
 
@@ -233,3 +239,11 @@
 
 - [ ] 15. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
+
+## Notes
+
+- Tasks marked with `*` are optional and can be skipped for faster MVP
+- Each task references specific requirements for traceability
+- Checkpoints ensure incremental validation
+- Property tests validate universal correctness properties
+- Unit tests validate specific examples and edge cases
