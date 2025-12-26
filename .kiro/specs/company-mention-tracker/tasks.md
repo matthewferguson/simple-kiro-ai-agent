@@ -137,7 +137,7 @@ This implementation plan tracks the development of a Company Mention Tracker sys
   - Include error and status information in reports
   - _Requirements: 5.1, 5.2, 5.3, 5.5, 6.2, 6.3_
 
-- [ ]* 8.1 Write property test for report completeness
+- [x] 8.1 Write property test for report completeness
   - **Property 12: Report completeness**
   - **Validates: Requirements 5.1, 5.2**
 
