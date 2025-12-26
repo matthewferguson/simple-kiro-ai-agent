@@ -630,4 +630,346 @@ describe('ReportGenerator', () => {
       );
     });
   });
+
+  // Unit tests for task 8.5 requirements
+  describe('Unit Tests - Task 8.5', () => {
+    const searchPeriod = {
+      startDate: new Date('2024-01-01'),
+      endDate: new Date('2024-01-07')
+    };
+
+    it('should generate report with complete data', () => {
+      // Test report with complete data - all companies have full 7 days of data and no errors
+      const analyses: TrendAnalysis[] = [
+        createTrendAnalysis('Apple', 35, 'increasing', [
+          { date: new Date('2024-01-01'), count: 3 },
+          { date: new Date('2024-01-02'), count: 4 },
+          { date: new Date('2024-01-03'), count: 5 },
+          { date: new Date('2024-01-04'), count: 6 },
+          { date: new Date('2024-01-05'), count: 7 },
+          { date: new Date('2024-01-06'), count: 5 },
+          { date: new Date('2024-01-07'), count: 5 }
+        ]),
+        createTrendAnalysis('Google', 28, 'stable', [
+          { date: new Date('2024-01-01'), count: 4 },
+          { date: new Date('2024-01-02'), count: 4 },
+          { date: new Date('2024-01-03'), count: 4 },
+          { date: new Date('2024-01-04'), count: 4 },
+          { date: new Date('2024-01-05'), count: 4 },
+          { date: new Date('2024-01-06'), count: 4 },
+          { date: new Date('2024-01-07'), count: 4 }
+        ])
+      ];
+
+      const errors = new Map<string, string[]>(); // No errors
+
+      const report = reportGenerator.generateReport(analyses, searchPeriod, errors);
+
+      // Verify all companies have complete status
+      expect(report.companies).toHaveLength(2);
+      report.companies.forEach(company => {
+        expect(company.status).toBe('complete');
+        expect(company.trendAnalysis.dailyBreakdown).toHaveLength(7);
+      });
+
+      // Verify correct ordering by mentions (Apple: 35, Google: 28)
+      expect(report.companies[0].company).toBe('Apple');
+      expect(report.companies[1].company).toBe('Google');
+
+      // Verify summary reflects complete data
+      expect(report.summary.totalArticlesFound).toBe(63);
+      expect(report.summary.companiesWithIncreasingTrends).toBe(1);
+      expect(report.summary.companiesWithDecreasingTrends).toBe(0);
+    });
+
+    it('should generate report with partial failures', () => {
+      // Test report with partial failures - some companies have errors or incomplete data
+      // Requirements 6.2: Report should indicate which days have complete data and which have failures
+      const analyses: TrendAnalysis[] = [
+        createTrendAnalysis('Apple', 20, 'increasing', [
+          { date: new Date('2024-01-01'), count: 3 },
+          { date: new Date('2024-01-02'), count: 4 },
+          { date: new Date('2024-01-03'), count: 5 },
+          { date: new Date('2024-01-04'), count: 4 },
+          { date: new Date('2024-01-05'), count: 4 }
+          // Missing 2 days - partial data
+        ]),
+        createTrendAnalysis('Google', 28, 'stable', [
+          { date: new Date('2024-01-01'), count: 4 },
+          { date: new Date('2024-01-02'), count: 4 },
+          { date: new Date('2024-01-03'), count: 4 },
+          { date: new Date('2024-01-04'), count: 4 },
+          { date: new Date('2024-01-05'), count: 4 },
+          { date: new Date('2024-01-06'), count: 4 },
+          { date: new Date('2024-01-07'), count: 4 }
+        ]),
+        createTrendAnalysis('Microsoft', 15, 'decreasing', [
+          { date: new Date('2024-01-01'), count: 3 },
+          { date: new Date('2024-01-02'), count: 2 },
+          { date: new Date('2024-01-03'), count: 2 },
+          { date: new Date('2024-01-04'), count: 2 },
+          { date: new Date('2024-01-05'), count: 2 },
+          { date: new Date('2024-01-06'), count: 2 },
+          { date: new Date('2024-01-07'), count: 2 }
+        ])
+      ];
+
+      const errors = new Map([
+        ['Apple', ['Network timeout on day 6', 'Rate limit exceeded on day 7']],
+        ['Microsoft', ['API error on day 3']]
+      ]);
+
+      const report = reportGenerator.generateReport(analyses, searchPeriod, errors);
+
+      // Verify mixed statuses
+      expect(report.companies).toHaveLength(3);
+      
+      // Google should be complete (no errors, 7 days of data)
+      const googleReport = report.companies.find(c => c.company === 'Google');
+      expect(googleReport?.status).toBe('complete');
+      expect(googleReport?.trendAnalysis.dailyBreakdown).toHaveLength(7);
+
+      // Apple should be partial (has errors and incomplete data)
+      const appleReport = report.companies.find(c => c.company === 'Apple');
+      expect(appleReport?.status).toBe('partial');
+      expect(appleReport?.trendAnalysis.dailyBreakdown).toHaveLength(5);
+
+      // Microsoft should be partial (has errors but complete data)
+      const microsoftReport = report.companies.find(c => c.company === 'Microsoft');
+      expect(microsoftReport?.status).toBe('partial');
+      expect(microsoftReport?.trendAnalysis.dailyBreakdown).toHaveLength(7);
+
+      // Verify ordering by mentions: Google (28), Apple (20), Microsoft (15)
+      expect(report.companies[0].company).toBe('Google');
+      expect(report.companies[1].company).toBe('Apple');
+      expect(report.companies[2].company).toBe('Microsoft');
+    });
+
+    it('should generate report with all failures for one company', () => {
+      // Test report with all failures for one company
+      // Requirements 6.3: Include company with "no data available" status
+      const analyses: TrendAnalysis[] = [
+        createTrendAnalysis('Apple', 25, 'increasing', [
+          { date: new Date('2024-01-01'), count: 3 },
+          { date: new Date('2024-01-02'), count: 4 },
+          { date: new Date('2024-01-03'), count: 5 },
+          { date: new Date('2024-01-04'), count: 4 },
+          { date: new Date('2024-01-05'), count: 4 },
+          { date: new Date('2024-01-06'), count: 3 },
+          { date: new Date('2024-01-07'), count: 2 }
+        ]),
+        createTrendAnalysis('FailedCompany', 0, 'stable', []), // No data collected
+        createTrendAnalysis('Google', 20, 'stable', [
+          { date: new Date('2024-01-01'), count: 3 },
+          { date: new Date('2024-01-02'), count: 3 },
+          { date: new Date('2024-01-03'), count: 3 },
+          { date: new Date('2024-01-04'), count: 3 },
+          { date: new Date('2024-01-05'), count: 2 },
+          { date: new Date('2024-01-06'), count: 3 },
+          { date: new Date('2024-01-07'), count: 3 }
+        ])
+      ];
+
+      const errors = new Map([
+        ['FailedCompany', [
+          'DNS resolution failed',
+          'Connection timeout',
+          'Service unavailable',
+          'All retry attempts exhausted'
+        ]]
+      ]);
+
+      const report = reportGenerator.generateReport(analyses, searchPeriod, errors);
+
+      expect(report.companies).toHaveLength(3);
+
+      // Find the failed company report
+      const failedReport = report.companies.find(c => c.company === 'FailedCompany');
+      expect(failedReport).toBeDefined();
+      expect(failedReport?.status).toBe('no data available');
+      expect(failedReport?.trendAnalysis.statistics.totalMentions).toBe(0);
+      expect(failedReport?.trendAnalysis.dailyBreakdown).toHaveLength(0);
+
+      // Other companies should have different statuses
+      const appleReport = report.companies.find(c => c.company === 'Apple');
+      expect(appleReport?.status).toBe('complete');
+
+      const googleReport = report.companies.find(c => c.company === 'Google');
+      expect(googleReport?.status).toBe('complete');
+
+      // Verify ordering: Apple (25), Google (20), FailedCompany (0)
+      expect(report.companies[0].company).toBe('Apple');
+      expect(report.companies[1].company).toBe('Google');
+      expect(report.companies[2].company).toBe('FailedCompany');
+
+      // Verify summary accounts for all companies including failed ones
+      expect(report.summary.totalArticlesFound).toBe(45); // 25 + 20 + 0
+    });
+
+    it('should handle company ordering with ties correctly', () => {
+      // Test company ordering with ties - Requirement 5.5: Alphabetical tie-breaking
+      const analyses: TrendAnalysis[] = [
+        createTrendAnalysis('Zebra Corp', 15, 'stable', [
+          { date: new Date('2024-01-01'), count: 2 },
+          { date: new Date('2024-01-02'), count: 2 },
+          { date: new Date('2024-01-03'), count: 2 },
+          { date: new Date('2024-01-04'), count: 3 },
+          { date: new Date('2024-01-05'), count: 2 },
+          { date: new Date('2024-01-06'), count: 2 },
+          { date: new Date('2024-01-07'), count: 2 }
+        ]),
+        createTrendAnalysis('Apple Inc', 20, 'increasing', [
+          { date: new Date('2024-01-01'), count: 3 },
+          { date: new Date('2024-01-02'), count: 3 },
+          { date: new Date('2024-01-03'), count: 3 },
+          { date: new Date('2024-01-04'), count: 3 },
+          { date: new Date('2024-01-05'), count: 2 },
+          { date: new Date('2024-01-06'), count: 3 },
+          { date: new Date('2024-01-07'), count: 3 }
+        ]),
+        createTrendAnalysis('Beta Systems', 15, 'decreasing', [
+          { date: new Date('2024-01-01'), count: 3 },
+          { date: new Date('2024-01-02'), count: 2 },
+          { date: new Date('2024-01-03'), count: 2 },
+          { date: new Date('2024-01-04'), count: 2 },
+          { date: new Date('2024-01-05'), count: 2 },
+          { date: new Date('2024-01-06'), count: 2 },
+          { date: new Date('2024-01-07'), count: 2 }
+        ]),
+        createTrendAnalysis('Charlie Ltd', 10, 'volatile', [
+          { date: new Date('2024-01-01'), count: 1 },
+          { date: new Date('2024-01-02'), count: 2 },
+          { date: new Date('2024-01-03'), count: 1 },
+          { date: new Date('2024-01-04'), count: 2 },
+          { date: new Date('2024-01-05'), count: 1 },
+          { date: new Date('2024-01-06'), count: 2 },
+          { date: new Date('2024-01-07'), count: 1 }
+        ]),
+        createTrendAnalysis('Alpha Group', 15, 'stable', [
+          { date: new Date('2024-01-01'), count: 2 },
+          { date: new Date('2024-01-02'), count: 2 },
+          { date: new Date('2024-01-03'), count: 2 },
+          { date: new Date('2024-01-04'), count: 2 },
+          { date: new Date('2024-01-05'), count: 3 },
+          { date: new Date('2024-01-06'), count: 2 },
+          { date: new Date('2024-01-07'), count: 2 }
+        ])
+      ];
+
+      const report = reportGenerator.generateReport(analyses, searchPeriod);
+
+      expect(report.companies).toHaveLength(5);
+
+      // Expected order:
+      // 1. Apple Inc (20 mentions) - highest mentions
+      // 2. Alpha Group (15 mentions) - tied with others, but alphabetically first among ties
+      // 3. Beta Systems (15 mentions) - tied, alphabetically second among ties  
+      // 4. Zebra Corp (15 mentions) - tied, alphabetically last among ties
+      // 5. Charlie Ltd (10 mentions) - lowest mentions
+
+      const companyNames = report.companies.map(c => c.company);
+      expect(companyNames).toEqual([
+        'Apple Inc',
+        'Alpha Group', 
+        'Beta Systems',
+        'Zebra Corp',
+        'Charlie Ltd'
+      ]);
+
+      // Verify the mention counts are correct
+      expect(report.companies[0].trendAnalysis.statistics.totalMentions).toBe(20);
+      expect(report.companies[1].trendAnalysis.statistics.totalMentions).toBe(15);
+      expect(report.companies[2].trendAnalysis.statistics.totalMentions).toBe(15);
+      expect(report.companies[3].trendAnalysis.statistics.totalMentions).toBe(15);
+      expect(report.companies[4].trendAnalysis.statistics.totalMentions).toBe(10);
+
+      // Verify that companies with the same mention count are in alphabetical order
+      const companiesWith15Mentions = report.companies
+        .filter(c => c.trendAnalysis.statistics.totalMentions === 15)
+        .map(c => c.company);
+      
+      expect(companiesWith15Mentions).toEqual(['Alpha Group', 'Beta Systems', 'Zebra Corp']);
+      
+      // Verify alphabetical ordering
+      const sortedCompanies = [...companiesWith15Mentions].sort((a, b) => a.localeCompare(b));
+      expect(companiesWith15Mentions).toEqual(sortedCompanies);
+    });
+
+    it('should handle edge case with all companies having zero mentions', () => {
+      // Edge case: all companies failed to get any data
+      const analyses: TrendAnalysis[] = [
+        createTrendAnalysis('Apple', 0, 'stable', []),
+        createTrendAnalysis('Google', 0, 'stable', []),
+        createTrendAnalysis('Microsoft', 0, 'stable', [])
+      ];
+
+      const errors = new Map([
+        ['Apple', ['Service unavailable']],
+        ['Google', ['Rate limit exceeded']],
+        ['Microsoft', ['Network error']]
+      ]);
+
+      const report = reportGenerator.generateReport(analyses, searchPeriod, errors);
+
+      expect(report.companies).toHaveLength(3);
+      
+      // All should have "no data available" status
+      report.companies.forEach(company => {
+        expect(company.status).toBe('no data available');
+        expect(company.trendAnalysis.statistics.totalMentions).toBe(0);
+      });
+
+      // Should be ordered alphabetically since all have same mention count (0)
+      const companyNames = report.companies.map(c => c.company);
+      expect(companyNames).toEqual(['Apple', 'Google', 'Microsoft']);
+
+      // Summary should reflect no data
+      expect(report.summary.totalArticlesFound).toBe(0);
+    });
+
+    it('should handle mixed status scenarios comprehensively', () => {
+      // Comprehensive test with all three status types
+      const analyses: TrendAnalysis[] = [
+        // Complete data
+        createTrendAnalysis('CompleteCompany', 30, 'increasing', Array.from({ length: 7 }, (_, i) => ({
+          date: new Date(`2024-01-0${i + 1}`),
+          count: 4 + i % 3
+        }))),
+        // Partial data (has some data but with errors)
+        createTrendAnalysis('PartialCompany', 12, 'stable', Array.from({ length: 4 }, (_, i) => ({
+          date: new Date(`2024-01-0${i + 1}`),
+          count: 3
+        }))),
+        // No data (zero mentions with errors)
+        createTrendAnalysis('NoDataCompany', 0, 'stable', [])
+      ];
+
+      const errors = new Map([
+        ['PartialCompany', ['Timeout on day 5', 'Service error on day 6']],
+        ['NoDataCompany', ['Complete service failure', 'All endpoints unreachable']]
+      ]);
+
+      const report = reportGenerator.generateReport(analyses, searchPeriod, errors);
+
+      expect(report.companies).toHaveLength(3);
+
+      // Verify each status type
+      const completeCompany = report.companies.find(c => c.company === 'CompleteCompany');
+      expect(completeCompany?.status).toBe('complete');
+      expect(completeCompany?.trendAnalysis.dailyBreakdown).toHaveLength(7);
+
+      const partialCompany = report.companies.find(c => c.company === 'PartialCompany');
+      expect(partialCompany?.status).toBe('partial');
+      expect(partialCompany?.trendAnalysis.dailyBreakdown).toHaveLength(4);
+
+      const noDataCompany = report.companies.find(c => c.company === 'NoDataCompany');
+      expect(noDataCompany?.status).toBe('no data available');
+      expect(noDataCompany?.trendAnalysis.dailyBreakdown).toHaveLength(0);
+
+      // Verify ordering: CompleteCompany (30), PartialCompany (12), NoDataCompany (0)
+      expect(report.companies[0].company).toBe('CompleteCompany');
+      expect(report.companies[1].company).toBe('PartialCompany');
+      expect(report.companies[2].company).toBe('NoDataCompany');
+    });
+  });
 });

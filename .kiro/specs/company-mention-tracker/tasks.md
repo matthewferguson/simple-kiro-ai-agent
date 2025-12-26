@@ -153,7 +153,7 @@ This implementation plan tracks the development of a Company Mention Tracker sys
   - **Property 16: Partial data reporting accuracy**
   - **Validates: Requirements 6.2**
 
-- [ ]* 8.5 Write unit tests for Report Generator
+- [x] 8.5 Write unit tests for Report Generator
   - Test report with complete data
   - Test report with partial failures
   - Test report with all failures for one company
