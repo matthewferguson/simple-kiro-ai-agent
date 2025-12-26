@@ -498,4 +498,95 @@ Credits used: 1.71\
 Elapsed time: 1m 41s\
 \pard\pardeftab720\partightenfactor0
 \cf2 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \'97\'97\'97\'97\'97\'97\'97\'97\'97\'97\'97\'97\'97\'97\
+\'97\'97\'97\'97\'97\'97\'97\'97\'97\'97\'97\'97\'97\'97\
+\pard\pardeftab720\partightenfactor0
+\cf2 \
+8.2 Task Completed Successfully\
+I have successfully implemented Property 13: Chronological ordering as a property-based test in the ReportGenerator test suite. The test validates Requirement 5.3 which states that daily breakdown data should be displayed in chronological order.\
+\
+What was implemented:\
+Property Test for Chronological Ordering: Added a comprehensive property-based test that:\
+\
+Generates random company data with randomly ordered daily breakdowns\
+Validates that after report generation, all daily breakdowns are sorted chronologically\
+Uses two verification methods:\
+Sequential comparison to ensure each date \uc0\u8804  next date\
+Comparison with a sorted version to ensure perfect chronological order\
+Runs 100 iterations to thoroughly test the property\
+Test Coverage: The test validates that the sortDailyBreakdownChronologically method in the ReportGenerator correctly sorts daily mention data by date in ascending order.\
+\
+Requirements Validation: The test explicitly validates Requirements 5.3 as specified in the task details.\
+\
+The property test passed successfully, confirming that the chronological ordering functionality works correctly across all generated test cases. The task has been marked as completed and the PBT status has been updated to "passed".\
+\
+Credits used: 1.62\
+Elapsed time: 1m 31s\
+\
+\
+\'97\'97\'97\'97\'97\'97\'97\'97\
+\
+\
+Task Completion Summary\
+Task 8.3: Write property test for alphabetical tie-breaking\
+\
+Property 14: Alphabetical tie-breaking\
+Validates: Requirements 5.5\
+Implementation Details\
+I added a comprehensive property-based test that:\
+\
+Generates random company data with potential ties in mention counts to increase the likelihood of testing the tie-breaking logic\
+Validates the overall sorting behavior by checking that companies are ordered first by total mentions (descending), then alphabetically for ties\
+Performs dual verification:\
+Sequential comparison of adjacent companies in the report\
+Grouping by mention count and verifying alphabetical order within each group\
+Handles edge cases like ensuring unique company names and skipping when insufficient data is generated\
+Runs 100 iterations as required for property-based testing\
+Key Features of the Test\
+Universal quantification: Tests "for any" set of companies with potential mention count ties\
+Comprehensive validation: Verifies both the primary sorting (by mentions) and secondary sorting (alphabetical)\
+Robust data generation: Uses fast-check to generate realistic test scenarios\
+Requirements traceability: Explicitly validates Requirements 5.5 as specified\
+The test successfully passed, confirming that the ReportGenerator correctly implements alphabetical tie-breaking when companies have equal mention counts, as required by the specification.\
+\
+Credits used: 1.62\
+Elapsed time: 1m 35s\
+\
+\'97\'97\'97\'97\'97\'97\'97\'97\'97\'97\
+\'97\'97\'97\'97\'97\'97\'97\'97\'97\'97\'97\
+\
+Task 8.4 Implementation Summary\
+I implemented Property 16: Partial data reporting accuracy which validates Requirements 6.2 - ensuring that when partial data is collected, the report correctly indicates which days have complete data and which have failures.\
+\
+Key Features of the Property Test:\
+Comprehensive Status Validation: The test generates various data completeness scenarios (complete, partial, no data) and verifies that the ReportGenerator correctly assigns status based on:\
+\
+Presence of errors\
+Completeness of daily breakdown (7 days expected)\
+Total mention counts\
+Status Logic Verification:\
+\
+complete: No errors AND full 7 days of data\
+partial: Has errors OR incomplete data (but not zero mentions with errors)\
+no data available: Zero mentions AND has errors\
+Data Integrity Checks: Ensures that:\
+\
+All companies are included in reports regardless of data completeness\
+Original data structure is preserved\
+Report structure remains consistent even with partial data\
+Property-Based Testing: Uses fast-check to generate 100 random test scenarios with various combinations of:\
+\
+Different numbers of companies (1-5)\
+Various daily breakdown lengths (0-7 days)\
+Random error conditions\
+Different mention counts\
+The test passed successfully, confirming that the ReportGenerator correctly handles partial data scenarios and accurately reports the status of each company's data completeness, fulfilling the requirements for graceful degradation and transparent error reporting.\
+\
+Credits used: 1.6\
+Elapsed time: 5m 11s\
+\
+\'97\'97\'97\'97\'97\'97\'97\'97\
+\'97\'97\'97\'97\'97\'97\'97\'97\
+\
 }
