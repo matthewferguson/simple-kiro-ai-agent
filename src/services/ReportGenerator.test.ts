@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import * as fc from 'fast-check';
 import { ReportGenerator } from './ReportGenerator.js';
 import { TrendAnalysis, TrendClassification } from '../models/types.js';
 
@@ -228,6 +229,96 @@ describe('ReportGenerator', () => {
     it('should default to text format for unknown format', () => {
       const result = reportGenerator.formatReport(sampleReport, 'unknown' as any);
       expect(result).toContain('COMPANY MENTION TRACKER REPORT');
+    });
+  });
+
+  // Feature: company-mention-tracker, Property 12: Report completeness
+  describe('Property 12: Report completeness', () => {
+    it('should generate complete reports with exactly 5 companies and all required fields', () => {
+      fc.assert(
+        fc.property(
+          // Generate exactly 5 companies with trend analyses
+          fc.array(
+            fc.record({
+              company: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+              classification: fc.constantFrom('increasing', 'decreasing', 'stable', 'volatile'),
+              totalMentions: fc.integer({ min: 0, max: 1000 }),
+              dailyBreakdown: fc.array(
+                fc.record({
+                  date: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-01-07') }),
+                  count: fc.integer({ min: 0, max: 100 })
+                }),
+                { minLength: 1, maxLength: 7 }
+              )
+            }),
+            { minLength: 5, maxLength: 5 }
+          ),
+          fc.record({
+            startDate: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-01-01') }),
+            endDate: fc.date({ min: new Date('2024-01-07'), max: new Date('2024-01-07') })
+          }),
+          (companyData, searchPeriod) => {
+            // Convert generated data to TrendAnalysis format
+            const analyses: TrendAnalysis[] = companyData.map(data => ({
+              company: data.company,
+              classification: data.classification as TrendClassification,
+              statistics: {
+                totalMentions: data.totalMentions,
+                averageDaily: data.totalMentions / 7,
+                percentageChange: 0,
+                standardDeviation: 0
+              },
+              dailyBreakdown: data.dailyBreakdown
+            }));
+
+            const report = reportGenerator.generateReport(analyses, searchPeriod);
+
+            // Property 12: Report completeness validation
+            // Requirements 5.1: Report contains all companies
+            expect(report.companies).toHaveLength(5);
+
+            // Requirements 5.2: Each company has all required data
+            report.companies.forEach(companyReport => {
+              // Company name is present and non-empty
+              expect(companyReport.company).toBeDefined();
+              expect(typeof companyReport.company).toBe('string');
+              expect(companyReport.company.trim().length).toBeGreaterThan(0);
+
+              // Trend analysis is complete
+              expect(companyReport.trendAnalysis).toBeDefined();
+              expect(companyReport.trendAnalysis.company).toBe(companyReport.company);
+
+              // Total mentions is defined
+              expect(companyReport.trendAnalysis.statistics.totalMentions).toBeDefined();
+              expect(typeof companyReport.trendAnalysis.statistics.totalMentions).toBe('number');
+              expect(companyReport.trendAnalysis.statistics.totalMentions).toBeGreaterThanOrEqual(0);
+
+              // Daily breakdown is present
+              expect(companyReport.trendAnalysis.dailyBreakdown).toBeDefined();
+              expect(Array.isArray(companyReport.trendAnalysis.dailyBreakdown)).toBe(true);
+
+              // Trend classification is valid
+              expect(companyReport.trendAnalysis.classification).toBeDefined();
+              expect(['increasing', 'decreasing', 'stable', 'volatile']).toContain(
+                companyReport.trendAnalysis.classification
+              );
+
+              // Status is defined
+              expect(companyReport.status).toBeDefined();
+              expect(['complete', 'partial', 'no data available']).toContain(companyReport.status);
+            });
+
+            // Report structure completeness
+            expect(report.generatedAt).toBeInstanceOf(Date);
+            expect(report.searchPeriod).toEqual(searchPeriod);
+            expect(report.summary).toBeDefined();
+            expect(typeof report.summary.totalArticlesFound).toBe('number');
+            expect(typeof report.summary.companiesWithIncreasingTrends).toBe('number');
+            expect(typeof report.summary.companiesWithDecreasingTrends).toBe('number');
+          }
+        ),
+        { numRuns: 100 }
+      );
     });
   });
 });
