@@ -88,6 +88,193 @@ describe('TrendAnalyzer', () => {
       const result = analyzer.analyzeTrend(snapshots);
       expect(result.classification).toBe('volatile');
     });
+
+    // Additional unit tests for specific requirements 4.4, 4.5, 4.6, 4.7
+
+    it('should classify stable trend with low variance (< 10% coefficient of variation)', () => {
+      // Requirement 4.4: Stable when variance < 10%
+      const snapshots: DailySnapshot[] = [
+        { company: 'Apple', date: new Date('2023-12-01'), mentionCount: 100, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-02'), mentionCount: 102, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-03'), mentionCount: 98, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-04'), mentionCount: 101, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-05'), mentionCount: 99, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-06'), mentionCount: 103, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-07'), mentionCount: 97, articles: [], status: 'complete' as const }
+      ];
+
+      const result = analyzer.analyzeTrend(snapshots);
+      expect(result.classification).toBe('stable');
+      
+      // Verify low coefficient of variation
+      const counts = snapshots.map(s => s.mentionCount);
+      const mean = counts.reduce((sum, count) => sum + count, 0) / counts.length;
+      const variance = counts.reduce((sum, count) => sum + Math.pow(count - mean, 2), 0) / counts.length;
+      const standardDeviation = Math.sqrt(variance);
+      const coefficientOfVariation = (standardDeviation / mean) * 100;
+      expect(coefficientOfVariation).toBeLessThan(10);
+    });
+
+    it('should classify increasing trend with > 20% growth', () => {
+      // Requirement 4.5: Increasing when growth > 20%
+      const snapshots: DailySnapshot[] = [
+        { company: 'Apple', date: new Date('2023-12-01'), mentionCount: 10, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-02'), mentionCount: 11, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-03'), mentionCount: 12, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-04'), mentionCount: 13, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-05'), mentionCount: 14, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-06'), mentionCount: 15, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-07'), mentionCount: 16, articles: [], status: 'complete' as const }
+      ];
+
+      const result = analyzer.analyzeTrend(snapshots);
+      expect(result.classification).toBe('increasing');
+      
+      // Verify > 20% growth (10 to 16 = 60% growth)
+      const percentageChange = ((16 - 10) / 10) * 100;
+      expect(percentageChange).toBeGreaterThan(20);
+      expect(result.statistics.percentageChange).toBeCloseTo(percentageChange, 5);
+    });
+
+    it('should classify decreasing trend with > 20% decline', () => {
+      // Requirement 4.6: Decreasing when decline > 20%
+      const snapshots: DailySnapshot[] = [
+        { company: 'Apple', date: new Date('2023-12-01'), mentionCount: 20, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-02'), mentionCount: 18, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-03'), mentionCount: 16, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-04'), mentionCount: 14, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-05'), mentionCount: 12, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-06'), mentionCount: 10, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-07'), mentionCount: 8, articles: [], status: 'complete' as const }
+      ];
+
+      const result = analyzer.analyzeTrend(snapshots);
+      expect(result.classification).toBe('decreasing');
+      
+      // Verify > 20% decline (20 to 8 = -60% decline)
+      const percentageChange = ((8 - 20) / 20) * 100;
+      expect(percentageChange).toBeLessThan(-20);
+      expect(result.statistics.percentageChange).toBeCloseTo(percentageChange, 5);
+    });
+
+    it('should classify volatile trend with fluctuations (no clear direction)', () => {
+      // Requirement 4.7: Volatile when fluctuating without clear direction
+      const snapshots: DailySnapshot[] = [
+        { company: 'Apple', date: new Date('2023-12-01'), mentionCount: 10, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-02'), mentionCount: 25, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-03'), mentionCount: 5, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-04'), mentionCount: 30, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-05'), mentionCount: 8, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-06'), mentionCount: 22, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-07'), mentionCount: 12, articles: [], status: 'complete' as const }
+      ];
+
+      const result = analyzer.analyzeTrend(snapshots);
+      expect(result.classification).toBe('volatile');
+      
+      // Verify high coefficient of variation (> 10%) and no clear direction
+      const counts = snapshots.map(s => s.mentionCount);
+      const mean = counts.reduce((sum, count) => sum + count, 0) / counts.length;
+      const variance = counts.reduce((sum, count) => sum + Math.pow(count - mean, 2), 0) / counts.length;
+      const standardDeviation = Math.sqrt(variance);
+      const coefficientOfVariation = (standardDeviation / mean) * 100;
+      expect(coefficientOfVariation).toBeGreaterThan(10);
+      
+      // Verify percentage change is not > 20% or < -20%
+      const percentageChange = ((12 - 10) / 10) * 100;
+      expect(Math.abs(percentageChange)).toBeLessThanOrEqual(20);
+    });
+
+    it('should handle boundary case: exactly 20% increase (should be volatile)', () => {
+      // Test boundary condition for increasing trend
+      const snapshots: DailySnapshot[] = [
+        { company: 'Apple', date: new Date('2023-12-01'), mentionCount: 10, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-02'), mentionCount: 15, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-03'), mentionCount: 20, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-04'), mentionCount: 18, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-05'), mentionCount: 16, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-06'), mentionCount: 14, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-07'), mentionCount: 12, articles: [], status: 'complete' as const }
+      ];
+
+      const result = analyzer.analyzeTrend(snapshots);
+      // Exactly 20% increase should be volatile (not increasing which requires > 20%)
+      expect(result.classification).toBe('volatile');
+      
+      const percentageChange = ((12 - 10) / 10) * 100;
+      expect(percentageChange).toBe(20);
+    });
+
+    it('should handle boundary case: exactly 20% decrease (should be volatile)', () => {
+      // Test boundary condition for decreasing trend
+      const snapshots: DailySnapshot[] = [
+        { company: 'Apple', date: new Date('2023-12-01'), mentionCount: 10, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-02'), mentionCount: 12, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-03'), mentionCount: 14, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-04'), mentionCount: 12, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-05'), mentionCount: 10, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-06'), mentionCount: 9, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-07'), mentionCount: 8, articles: [], status: 'complete' as const }
+      ];
+
+      const result = analyzer.analyzeTrend(snapshots);
+      // Exactly 20% decrease should be volatile (not decreasing which requires < -20%)
+      expect(result.classification).toBe('volatile');
+      
+      const percentageChange = ((8 - 10) / 10) * 100;
+      expect(percentageChange).toBe(-20);
+    });
+
+    it('should handle edge case: zero starting count with positive ending count', () => {
+      // Test edge case where starting count is 0
+      const snapshots: DailySnapshot[] = [
+        { company: 'Apple', date: new Date('2023-12-01'), mentionCount: 0, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-02'), mentionCount: 1, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-03'), mentionCount: 2, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-04'), mentionCount: 3, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-05'), mentionCount: 4, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-06'), mentionCount: 5, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-07'), mentionCount: 6, articles: [], status: 'complete' as const }
+      ];
+
+      const result = analyzer.analyzeTrend(snapshots);
+      // When starting from 0, any positive ending should be classified as increasing
+      expect(result.classification).toBe('increasing');
+      expect(result.statistics.percentageChange).toBe(100); // Special case: 0 to positive = 100%
+    });
+
+    it('should calculate correct statistics for all trend types', () => {
+      const snapshots: DailySnapshot[] = [
+        { company: 'Apple', date: new Date('2023-12-01'), mentionCount: 5, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-02'), mentionCount: 10, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-03'), mentionCount: 15, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-04'), mentionCount: 20, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-05'), mentionCount: 25, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-06'), mentionCount: 30, articles: [], status: 'complete' as const },
+        { company: 'Apple', date: new Date('2023-12-07'), mentionCount: 35, articles: [], status: 'complete' as const }
+      ];
+
+      const result = analyzer.analyzeTrend(snapshots);
+      
+      // Verify statistics calculations
+      expect(result.statistics.totalMentions).toBe(140); // 5+10+15+20+25+30+35
+      expect(result.statistics.averageDaily).toBe(20); // 140/7
+      expect(result.statistics.percentageChange).toBe(600); // (35-5)/5 * 100
+      
+      // Verify standard deviation calculation
+      const counts = [5, 10, 15, 20, 25, 30, 35];
+      const mean = 20;
+      const variance = counts.reduce((sum, count) => sum + Math.pow(count - mean, 2), 0) / counts.length;
+      const expectedStdDev = Math.sqrt(variance);
+      expect(result.statistics.standardDeviation).toBeCloseTo(expectedStdDev, 5);
+      
+      // Verify daily breakdown
+      expect(result.dailyBreakdown).toHaveLength(7);
+      result.dailyBreakdown.forEach((day, index) => {
+        expect(day.count).toBe(snapshots[index].mentionCount);
+        expect(day.date.getTime()).toBe(snapshots[index].date.getTime());
+      });
+    });
   });
 
   describe('Property-Based Tests', () => {
