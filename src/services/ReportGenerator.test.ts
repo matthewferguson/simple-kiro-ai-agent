@@ -321,4 +321,313 @@ describe('ReportGenerator', () => {
       );
     });
   });
+
+  // Feature: company-mention-tracker, Property 13: Chronological ordering
+  describe('Property 13: Chronological ordering', () => {
+    it('should ensure daily breakdown is always in chronological order', () => {
+      fc.assert(
+        fc.property(
+          // Generate companies with randomly ordered daily breakdowns
+          fc.array(
+            fc.record({
+              company: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+              classification: fc.constantFrom('increasing', 'decreasing', 'stable', 'volatile'),
+              totalMentions: fc.integer({ min: 0, max: 1000 }),
+              dailyBreakdown: fc.array(
+                fc.record({
+                  date: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-01-07') }),
+                  count: fc.integer({ min: 0, max: 100 })
+                }),
+                { minLength: 2, maxLength: 7 }
+              )
+            }),
+            { minLength: 1, maxLength: 5 }
+          ),
+          fc.record({
+            startDate: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-01-01') }),
+            endDate: fc.date({ min: new Date('2024-01-07'), max: new Date('2024-01-07') })
+          }),
+          (companyData, searchPeriod) => {
+            // Convert generated data to TrendAnalysis format
+            const analyses: TrendAnalysis[] = companyData.map(data => ({
+              company: data.company,
+              classification: data.classification as TrendClassification,
+              statistics: {
+                totalMentions: data.totalMentions,
+                averageDaily: data.totalMentions / 7,
+                percentageChange: 0,
+                standardDeviation: 0
+              },
+              dailyBreakdown: data.dailyBreakdown
+            }));
+
+            const report = reportGenerator.generateReport(analyses, searchPeriod);
+
+            // Property 13: Chronological ordering validation
+            // Requirement 5.3: Daily breakdown should be in chronological order
+            report.companies.forEach(companyReport => {
+              const dailyBreakdown = companyReport.trendAnalysis.dailyBreakdown;
+              
+              // Skip validation if there are fewer than 2 entries
+              if (dailyBreakdown.length < 2) {
+                return;
+              }
+
+              // Check that each date is less than or equal to the next date
+              for (let i = 0; i < dailyBreakdown.length - 1; i++) {
+                const currentDate = dailyBreakdown[i].date.getTime();
+                const nextDate = dailyBreakdown[i + 1].date.getTime();
+                
+                expect(currentDate).toBeLessThanOrEqual(nextDate);
+              }
+
+              // Alternative verification: compare with sorted version
+              const sortedDates = dailyBreakdown
+                .map(d => d.date.getTime())
+                .sort((a, b) => a - b);
+              
+              const actualDates = dailyBreakdown.map(d => d.date.getTime());
+              
+              expect(actualDates).toEqual(sortedDates);
+            });
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+  });
+
+  // Feature: company-mention-tracker, Property 14: Alphabetical tie-breaking
+  describe('Property 14: Alphabetical tie-breaking', () => {
+    it('should order companies with equal mention counts alphabetically', () => {
+      fc.assert(
+        fc.property(
+          // Generate companies with potential ties in mention counts
+          fc.array(
+            fc.record({
+              company: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+              classification: fc.constantFrom('increasing', 'decreasing', 'stable', 'volatile'),
+              totalMentions: fc.integer({ min: 0, max: 50 }), // Smaller range to increase chance of ties
+              dailyBreakdown: fc.array(
+                fc.record({
+                  date: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-01-07') }),
+                  count: fc.integer({ min: 0, max: 10 })
+                }),
+                { minLength: 1, maxLength: 7 }
+              )
+            }),
+            { minLength: 2, maxLength: 10 }
+          ),
+          fc.record({
+            startDate: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-01-01') }),
+            endDate: fc.date({ min: new Date('2024-01-07'), max: new Date('2024-01-07') })
+          }),
+          (companyData, searchPeriod) => {
+            // Ensure we have unique company names to avoid conflicts
+            const uniqueCompanies = new Map<string, typeof companyData[0]>();
+            companyData.forEach(data => {
+              if (!uniqueCompanies.has(data.company)) {
+                uniqueCompanies.set(data.company, data);
+              }
+            });
+
+            // Skip if we don't have at least 2 unique companies
+            if (uniqueCompanies.size < 2) {
+              return;
+            }
+
+            // Convert to TrendAnalysis format
+            const analyses: TrendAnalysis[] = Array.from(uniqueCompanies.values()).map(data => ({
+              company: data.company,
+              classification: data.classification as TrendClassification,
+              statistics: {
+                totalMentions: data.totalMentions,
+                averageDaily: data.totalMentions / 7,
+                percentageChange: 0,
+                standardDeviation: 0
+              },
+              dailyBreakdown: data.dailyBreakdown
+            }));
+
+            const report = reportGenerator.generateReport(analyses, searchPeriod);
+
+            // Property 14: Alphabetical tie-breaking validation
+            // Requirement 5.5: Companies with equal mention counts should be ordered alphabetically
+            
+            // First, verify overall sorting: by mentions descending, then alphabetically
+            for (let i = 0; i < report.companies.length - 1; i++) {
+              const current = report.companies[i];
+              const next = report.companies[i + 1];
+              
+              const currentMentions = current.trendAnalysis.statistics.totalMentions;
+              const nextMentions = next.trendAnalysis.statistics.totalMentions;
+              
+              if (currentMentions === nextMentions) {
+                // When mention counts are equal, should be alphabetically ordered
+                expect(current.company.localeCompare(next.company)).toBeLessThanOrEqual(0);
+              } else {
+                // When mention counts differ, higher count should come first
+                expect(currentMentions).toBeGreaterThan(nextMentions);
+              }
+            }
+
+            // Additional verification: group by mention count and verify alphabetical order within groups
+            const mentionGroups = new Map<number, string[]>();
+            report.companies.forEach(company => {
+              const mentions = company.trendAnalysis.statistics.totalMentions;
+              if (!mentionGroups.has(mentions)) {
+                mentionGroups.set(mentions, []);
+              }
+              mentionGroups.get(mentions)!.push(company.company);
+            });
+
+            // Verify each group is alphabetically sorted
+            mentionGroups.forEach((companies, mentionCount) => {
+              if (companies.length > 1) {
+                const sortedCompanies = [...companies].sort((a, b) => a.localeCompare(b));
+                expect(companies).toEqual(sortedCompanies);
+              }
+            });
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+  });
+
+  // Feature: company-mention-tracker, Property 16: Partial data reporting accuracy
+  describe('Property 16: Partial data reporting accuracy', () => {
+    it('should correctly indicate status for partial data scenarios', () => {
+      fc.assert(
+        fc.property(
+          // Generate companies with various data completeness scenarios
+          fc.array(
+            fc.record({
+              company: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+              classification: fc.constantFrom('increasing', 'decreasing', 'stable', 'volatile'),
+              totalMentions: fc.integer({ min: 0, max: 1000 }),
+              dailyBreakdown: fc.array(
+                fc.record({
+                  date: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-01-07') }),
+                  count: fc.integer({ min: 0, max: 100 })
+                }),
+                { minLength: 0, maxLength: 7 } // Allow 0 to 7 days to simulate partial data
+              ),
+              hasErrors: fc.boolean(),
+              errorMessages: fc.array(fc.string({ minLength: 1, maxLength: 100 }), { minLength: 0, maxLength: 5 })
+            }),
+            { minLength: 1, maxLength: 5 }
+          ),
+          fc.record({
+            startDate: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-01-01') }),
+            endDate: fc.date({ min: new Date('2024-01-07'), max: new Date('2024-01-07') })
+          }),
+          (companyData, searchPeriod) => {
+            // Ensure unique company names
+            const uniqueCompanies = new Map<string, typeof companyData[0]>();
+            companyData.forEach(data => {
+              if (!uniqueCompanies.has(data.company)) {
+                uniqueCompanies.set(data.company, data);
+              }
+            });
+
+            if (uniqueCompanies.size === 0) {
+              return;
+            }
+
+            // Convert to TrendAnalysis format
+            const analyses: TrendAnalysis[] = Array.from(uniqueCompanies.values()).map(data => ({
+              company: data.company,
+              classification: data.classification as TrendClassification,
+              statistics: {
+                totalMentions: data.totalMentions,
+                averageDaily: data.totalMentions / 7,
+                percentageChange: 0,
+                standardDeviation: 0
+              },
+              dailyBreakdown: data.dailyBreakdown
+            }));
+
+            // Create error map based on generated data
+            const errors = new Map<string, string[]>();
+            Array.from(uniqueCompanies.values()).forEach(data => {
+              if (data.hasErrors && data.errorMessages.length > 0) {
+                errors.set(data.company, data.errorMessages);
+              }
+            });
+
+            const report = reportGenerator.generateReport(analyses, searchPeriod, errors);
+
+            // Property 16: Partial data reporting accuracy validation
+            // Requirement 6.2: Report should correctly indicate which days have complete data and which have failures
+            
+            report.companies.forEach(companyReport => {
+              const originalData = uniqueCompanies.get(companyReport.company)!;
+              const hasErrors = errors.has(companyReport.company);
+              const errorMessages = errors.get(companyReport.company) || [];
+              const dailyBreakdownLength = companyReport.trendAnalysis.dailyBreakdown.length;
+              const totalMentions = companyReport.trendAnalysis.statistics.totalMentions;
+
+              // Verify status accuracy based on data completeness
+              if (totalMentions === 0 && hasErrors && errorMessages.length > 0) {
+                // No data available: zero mentions and has errors
+                expect(companyReport.status).toBe('no data available');
+              } else if (hasErrors || dailyBreakdownLength < 7) {
+                // Partial data: has errors OR incomplete daily breakdown (less than 7 days)
+                expect(companyReport.status).toBe('partial');
+              } else {
+                // Complete data: no errors AND full 7 days of data
+                expect(companyReport.status).toBe('complete');
+              }
+
+              // Verify that the status reflects the actual data state
+              switch (companyReport.status) {
+                case 'complete':
+                  // Complete status should mean no errors and full data
+                  expect(hasErrors).toBe(false);
+                  expect(dailyBreakdownLength).toBe(7);
+                  break;
+                
+                case 'partial':
+                  // Partial status should mean either has errors OR incomplete data (but not both zero mentions and errors)
+                  expect(hasErrors || dailyBreakdownLength < 7).toBe(true);
+                  // Should not be the "no data available" case
+                  expect(!(totalMentions === 0 && hasErrors && errorMessages.length > 0)).toBe(true);
+                  break;
+                
+                case 'no data available':
+                  // No data available should mean zero mentions AND has errors
+                  expect(totalMentions).toBe(0);
+                  expect(hasErrors).toBe(true);
+                  expect(errorMessages.length).toBeGreaterThan(0);
+                  break;
+              }
+
+              // Verify that the report preserves the original data structure
+              expect(companyReport.company).toBe(originalData.company);
+              expect(companyReport.trendAnalysis.company).toBe(originalData.company);
+              expect(companyReport.trendAnalysis.classification).toBe(originalData.classification);
+              
+              // Verify that daily breakdown length matches the original data
+              expect(companyReport.trendAnalysis.dailyBreakdown.length).toBe(originalData.dailyBreakdown.length);
+            });
+
+            // Verify that all companies are included in the report regardless of data completeness
+            const reportCompanyNames = new Set(report.companies.map(c => c.company));
+            const originalCompanyNames = new Set(Array.from(uniqueCompanies.keys()));
+            expect(reportCompanyNames).toEqual(originalCompanyNames);
+
+            // Verify that the report structure is maintained even with partial data
+            expect(report.generatedAt).toBeInstanceOf(Date);
+            expect(report.searchPeriod).toEqual(searchPeriod);
+            expect(report.summary).toBeDefined();
+            expect(typeof report.summary.totalArticlesFound).toBe('number');
+            expect(typeof report.summary.companiesWithIncreasingTrends).toBe('number');
+            expect(typeof report.summary.companiesWithDecreasingTrends).toBe('number');
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+  });
 });

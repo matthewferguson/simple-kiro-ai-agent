@@ -141,15 +141,15 @@ This implementation plan tracks the development of a Company Mention Tracker sys
   - **Property 12: Report completeness**
   - **Validates: Requirements 5.1, 5.2**
 
-- [ ]* 8.2 Write property test for chronological ordering
+- [x] 8.2 Write property test for chronological ordering
   - **Property 13: Chronological ordering**
   - **Validates: Requirements 5.3**
 
-- [ ]* 8.3 Write property test for alphabetical tie-breaking
+- [x] 8.3 Write property test for alphabetical tie-breaking
   - **Property 14: Alphabetical tie-breaking**
   - **Validates: Requirements 5.5**
 
-- [ ]* 8.4 Write property test for partial data reporting accuracy
+- [x] 8.4 Write property test for partial data reporting accuracy
   - **Property 16: Partial data reporting accuracy**
   - **Validates: Requirements 6.2**
 
