@@ -564,27 +564,17 @@ describe('ArticleFetcher', () => {
       });
 
       try {
-        const retryPromise = fetcher.retry(operation, 3);
-        
-        // Let the retry logic run
-        await vi.runAllTimersAsync();
-        
-        await retryPromise;
-        // Should not reach here
-        expect.fail('Expected retry to throw after 3 attempts');
-      } catch (error) {
-        // Expected to fail after 3 attempts
-        expect(error).toBeInstanceOf(Error);
+        await expect(fetcher.retry(operation, 3)).rejects.toThrow('Network error');
+      } finally {
+        // Restore original method
+        (fetcher as any).isRetryableError = originalIsRetryableError;
+        sleepSpy.mockRestore();
       }
 
       // Verify exponential backoff timing: 1000ms, 2000ms
       expect(sleepSpy).toHaveBeenCalledTimes(2);
       expect(sleepSpy).toHaveBeenNthCalledWith(1, 1000); // 2^0 * 1000 = 1000ms
       expect(sleepSpy).toHaveBeenNthCalledWith(2, 2000); // 2^1 * 1000 = 2000ms
-
-      // Restore original method
-      (fetcher as any).isRetryableError = originalIsRetryableError;
-      sleepSpy.mockRestore();
     });
 
     it('should not apply backoff delay on first attempt', async () => {
