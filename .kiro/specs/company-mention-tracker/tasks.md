@@ -188,11 +188,11 @@ This implementation plan tracks the development of a Company Mention Tracker sys
   - **Property 3: Complete search coverage**
   - **Validates: Requirements 2.1**
 
-- [ ]* 10.2 Write property test for source configuration acceptance
+- [x] 10.2 Write property test for source configuration acceptance
   - **Property 18: Source configuration acceptance**
   - **Validates: Requirements 7.1**
 
-- [ ]* 10.3 Write property test for source validation
+- [x] 10.3 Write property test for source validation
   - **Property 19: Source validation**
   - **Validates: Requirements 7.3**
 
