@@ -186,7 +186,7 @@ export class ArticleFetcher {
   /**
    * Searches using web scraping
    */
-  private async searchScraper(company: string, date: Date, source: ArticleSource): Promise<Article[]> {
+  private async searchScraper(_company: string, _date: Date, source: ArticleSource): Promise<Article[]> {
     // For now, return empty array - scraping implementation would be source-specific
     console.warn(`Scraper source type not yet implemented for ${source.name}`);
     return [];
@@ -195,7 +195,7 @@ export class ArticleFetcher {
   /**
    * Builds API parameters for search request
    */
-  private buildAPIParams(company: string, date: Date, source: ArticleSource): Record<string, any> {
+  private buildAPIParams(company: string, date: Date, _source: ArticleSource): Record<string, any> {
     const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
     
     // Generic parameters - would need customization per API
@@ -460,7 +460,7 @@ export class ArticleFetcher {
   /**
    * Handles block detection by pausing searches and notifying user
    */
-  private handleBlockDetection(source: ArticleSource, error: any): void {
+  private handleBlockDetection(source: ArticleSource, _error: any): void {
     const message = `Block detected from source ${source.name}. Pausing searches to avoid further blocking.`;
     console.error(message);
     

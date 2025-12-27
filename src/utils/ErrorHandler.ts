@@ -356,7 +356,7 @@ export class ErrorHandler {
   /**
    * Determines error severity based on category and error details
    */
-  private determineSeverity(category: ErrorCategory, error: Error): ErrorSeverity {
+  private determineSeverity(category: ErrorCategory, _error: Error): ErrorSeverity {
     switch (category) {
       case ErrorCategory.BLOCKED:
       case ErrorCategory.SYSTEM:
@@ -375,7 +375,7 @@ export class ErrorHandler {
   /**
    * Determines if an error is retryable
    */
-  private isRetryableError(category: ErrorCategory, error: Error): boolean {
+  private isRetryableError(category: ErrorCategory, _error: Error): boolean {
     switch (category) {
       case ErrorCategory.NETWORK:
       case ErrorCategory.RATE_LIMIT:
