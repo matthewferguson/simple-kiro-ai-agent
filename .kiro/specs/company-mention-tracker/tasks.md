@@ -216,7 +216,7 @@ This implementation plan tracks the development of a Company Mention Tracker sys
   - Test progress tracking
   - _Requirements: All_
 
-- [ ] 13. Add example article source implementations
+- [x] 13. Add example article source implementations
   - Create mock article source for testing
   - Add example API integration (e.g., NewsAPI.org)
   - Implement RSS feed parser

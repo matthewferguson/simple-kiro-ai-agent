@@ -1,0 +1,209 @@
+{
+  "examples": {
+    "newsapi": {
+      "name": "NewsAPI",
+      "type": "api",
+      "endpoint": "https://newsapi.org/v2/everything",
+      "apiKey": "your-newsapi-key-here",
+      "rateLimit": 100,
+      "description": "NewsAPI.org provides access to breaking news headlines and articles from news sources and blogs across the web. Requires API key.",
+      "pricing": "Free tier: 1,000 requests/month, Developer: 500 requests/day",
+      "documentation": "https://newsapi.org/docs"
+    },
+    "google_news_rss": {
+      "name": "Google News RSS",
+      "type": "rss",
+      "endpoint": "https://news.google.com/rss/search?q={company}&hl=en&gl=US&ceid=US:en",
+      "rateLimit": 60,
+      "description": "Google News RSS feed with search functionality. Replace {company} with actual company name.",
+      "pricing": "Free",
+      "documentation": "https://support.google.com/news/publisher-center/answer/9606710"
+    },
+    "reuters_business": {
+      "name": "Reuters Business",
+      "type": "rss",
+      "endpoint": "https://www.reuters.com/business/finance/rss",
+      "rateLimit": 60,
+      "description": "Reuters business and finance news RSS feed",
+      "pricing": "Free",
+      "documentation": "https://www.reuters.com/tools/rss"
+    },
+    "bbc_business": {
+      "name": "BBC Business",
+      "type": "rss",
+      "endpoint": "https://feeds.bbci.co.uk/news/business/rss.xml",
+      "rateLimit": 60,
+      "description": "BBC Business news RSS feed",
+      "pricing": "Free",
+      "documentation": "https://www.bbc.com/news/10628494"
+    },
+    "techcrunch": {
+      "name": "TechCrunch",
+      "type": "rss",
+      "endpoint": "https://techcrunch.com/feed/",
+      "rateLimit": 60,
+      "description": "TechCrunch technology news RSS feed",
+      "pricing": "Free",
+      "documentation": "https://techcrunch.com/feed/"
+    },
+    "mock_source": {
+      "name": "Mock News Source",
+      "type": "api",
+      "endpoint": "https://mock-api.example.com/articles",
+      "rateLimit": 1000,
+      "description": "Mock article source for testing and development",
+      "pricing": "Free (testing only)",
+      "documentation": "Internal testing source"
+    }
+  },
+  "configurations": {
+    "development": [
+      {
+        "name": "Mock News Source",
+        "type": "api",
+        "endpoint": "https://mock-api.example.com/articles",
+        "rateLimit": 1000
+      }
+    ],
+    "testing": [
+      {
+        "name": "Mock API",
+        "type": "api",
+        "endpoint": "https://mock-api-1.example.com/articles",
+        "rateLimit": 100
+      },
+      {
+        "name": "Mock RSS",
+        "type": "rss",
+        "endpoint": "https://mock-rss.example.com/feed.xml",
+        "rateLimit": 60
+      }
+    ],
+    "production_free": [
+      {
+        "name": "Reuters Business",
+        "type": "rss",
+        "endpoint": "https://www.reuters.com/business/finance/rss",
+        "rateLimit": 60
+      },
+      {
+        "name": "BBC Business",
+        "type": "rss",
+        "endpoint": "https://feeds.bbci.co.uk/news/business/rss.xml",
+        "rateLimit": 60
+      },
+      {
+        "name": "TechCrunch",
+        "type": "rss",
+        "endpoint": "https://techcrunch.com/feed/",
+        "rateLimit": 60
+      }
+    ],
+    "production_with_newsapi": [
+      {
+        "name": "NewsAPI",
+        "type": "api",
+        "endpoint": "https://newsapi.org/v2/everything",
+        "apiKey": "your-newsapi-key-here",
+        "rateLimit": 100
+      },
+      {
+        "name": "Reuters Business",
+        "type": "rss",
+        "endpoint": "https://www.reuters.com/business/finance/rss",
+        "rateLimit": 60
+      },
+      {
+        "name": "BBC Business",
+        "type": "rss",
+        "endpoint": "https://feeds.bbci.co.uk/news/business/rss.xml",
+        "rateLimit": 60
+      }
+    ],
+    "high_volume": [
+      {
+        "name": "NewsAPI Premium",
+        "type": "api",
+        "endpoint": "https://newsapi.org/v2/everything",
+        "apiKey": "your-premium-newsapi-key-here",
+        "rateLimit": 500
+      },
+      {
+        "name": "Reuters Business",
+        "type": "rss",
+        "endpoint": "https://www.reuters.com/business/finance/rss",
+        "rateLimit": 120
+      },
+      {
+        "name": "BBC Business",
+        "type": "rss",
+        "endpoint": "https://feeds.bbci.co.uk/news/business/rss.xml",
+        "rateLimit": 120
+      },
+      {
+        "name": "CNN Business",
+        "type": "rss",
+        "endpoint": "http://rss.cnn.com/rss/money_latest.rss",
+        "rateLimit": 120
+      },
+      {
+        "name": "TechCrunch",
+        "type": "rss",
+        "endpoint": "https://techcrunch.com/feed/",
+        "rateLimit": 120
+      }
+    ]
+  },
+  "setup_instructions": {
+    "newsapi": {
+      "steps": [
+        "1. Visit https://newsapi.org/register to create a free account",
+        "2. Verify your email address",
+        "3. Copy your API key from the dashboard",
+        "4. Replace 'your-newsapi-key-here' with your actual API key",
+        "5. Note the rate limits for your plan (free: 1,000/month, developer: 500/day)"
+      ],
+      "environment_variable": "NEWSAPI_KEY"
+    },
+    "rss_feeds": {
+      "steps": [
+        "1. RSS feeds generally don't require API keys",
+        "2. Check the website's robots.txt and terms of service",
+        "3. Implement reasonable rate limiting (recommended: 60 requests/hour)",
+        "4. Monitor for changes in feed URLs",
+        "5. Handle feed parsing errors gracefully"
+      ]
+    }
+  },
+  "rate_limiting_guidelines": {
+    "newsapi_free": "33 requests per day (1,000/month)",
+    "newsapi_developer": "500 requests per day",
+    "newsapi_business": "Up to 250,000 requests per month",
+    "rss_feeds": "60-120 requests per hour (respect server resources)",
+    "general": "Always implement exponential backoff and respect Retry-After headers"
+  },
+  "troubleshooting": {
+    "common_issues": [
+      {
+        "issue": "NewsAPI 401 Unauthorized",
+        "solution": "Check that your API key is correct and active"
+      },
+      {
+        "issue": "NewsAPI 429 Too Many Requests",
+        "solution": "You've exceeded your rate limit. Wait or upgrade your plan"
+      },
+      {
+        "issue": "RSS feed 404 Not Found",
+        "solution": "The RSS feed URL may have changed. Check the website for updated URLs"
+      },
+      {
+        "issue": "RSS feed parsing errors",
+        "solution": "The feed format may be non-standard. Check XML structure and encoding"
+      },
+      {
+        "issue": "No articles found",
+        "solution": "Check date range, company name spelling, and source availability"
+      }
+    ]
+  }
+}

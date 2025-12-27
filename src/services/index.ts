@@ -7,3 +7,6 @@ export { MentionExtractor } from './MentionExtractor.js';
 export { TrendAnalyzer } from './TrendAnalyzer.js';
 export { ReportGenerator } from './ReportGenerator.js';
 export { SearchEngine } from './SearchEngine.js';
+
+// Article source implementations
+export * from './sources/index.js';
