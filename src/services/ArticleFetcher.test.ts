@@ -552,13 +552,20 @@ describe('ArticleFetcher', () => {
         .mockRejectedValueOnce(new Error('Network error'))
         .mockRejectedValueOnce(new Error('Network error'));
 
-      // Mock isRetryableError to return true
+      // Mock error checking methods to ensure proper flow
       const originalIsRetryableError = (fetcher as any).isRetryableError;
+      const originalIsBlockedError = (fetcher as any).isBlockedError;
+      const originalIsRateLimitError = (fetcher as any).isRateLimitError;
+      
       (fetcher as any).isRetryableError = vi.fn().mockReturnValue(true);
+      (fetcher as any).isBlockedError = vi.fn().mockReturnValue(false);
+      (fetcher as any).isRateLimitError = vi.fn().mockReturnValue(false);
 
-      // Track sleep calls
-      const sleepSpy = vi.spyOn(fetcher as any, 'sleep');
-      sleepSpy.mockImplementation((ms: number) => {
+      // Track sleep calls with a more direct approach
+      const sleepCalls: number[] = [];
+      const originalSleep = (fetcher as any).sleep;
+      (fetcher as any).sleep = vi.fn().mockImplementation(async (ms: number) => {
+        sleepCalls.push(ms);
         vi.advanceTimersByTime(ms);
         return Promise.resolve();
       });
@@ -566,15 +573,17 @@ describe('ArticleFetcher', () => {
       try {
         await expect(fetcher.retry(operation, 3)).rejects.toThrow('Network error');
       } finally {
-        // Restore original method
+        // Restore original methods
         (fetcher as any).isRetryableError = originalIsRetryableError;
-        sleepSpy.mockRestore();
+        (fetcher as any).isBlockedError = originalIsBlockedError;
+        (fetcher as any).isRateLimitError = originalIsRateLimitError;
+        (fetcher as any).sleep = originalSleep;
       }
 
       // Verify exponential backoff timing: 1000ms, 2000ms
-      expect(sleepSpy).toHaveBeenCalledTimes(2);
-      expect(sleepSpy).toHaveBeenNthCalledWith(1, 1000); // 2^0 * 1000 = 1000ms
-      expect(sleepSpy).toHaveBeenNthCalledWith(2, 2000); // 2^1 * 1000 = 2000ms
+      expect(sleepCalls).toHaveLength(2);
+      expect(sleepCalls[0]).toBe(1000); // 2^0 * 1000 = 1000ms
+      expect(sleepCalls[1]).toBe(2000); // 2^1 * 1000 = 2000ms
     });
 
     it('should not apply backoff delay on first attempt', async () => {
