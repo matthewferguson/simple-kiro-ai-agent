@@ -75,7 +75,7 @@ export class SearchEngine {
       
     } catch (error) {
       const message = `Failed to initialize SearchEngine: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      await this.errorLogger.logError(message, 'SearchEngine.initialize');
+      await this.errorLogger.logSystemError(message, { operation: 'SearchEngine.initialize' });
       throw new Error(message);
     }
   }
@@ -122,7 +122,7 @@ export class SearchEngine {
       
     } catch (error) {
       const message = `Search execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      await this.errorLogger.logError(message, 'SearchEngine.executeSearch');
+      await this.errorLogger.logSystemError(message, { operation: 'SearchEngine.executeSearch' });
       
       // If we have partial data, try to generate a partial report
       try {
@@ -205,8 +205,12 @@ export class SearchEngine {
       const articles = await this.articleFetcher.searchArticles(company, date, articleSources);
       
       // Extract mentions from articles
-      const mentions = this.mentionExtractor.extractMentions(articles, [company]);
-      const mentionCount = mentions.length;
+      let totalMentions = 0;
+      for (const article of articles) {
+        const mentions = this.mentionExtractor.extractMentions(article, [company]);
+        totalMentions += mentions.length;
+      }
+      const mentionCount = totalMentions;
       
       // Create and save daily snapshot
       const snapshot: DailySnapshot = {
@@ -264,7 +268,10 @@ export class SearchEngine {
         
       } catch (error) {
         const errorMessage = `Failed to analyze trends for ${company}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-        await this.errorLogger.logError(errorMessage, 'SearchEngine.analyzeTrendsForAllCompanies');
+        await this.errorLogger.logSystemError(errorMessage, { 
+          operation: 'SearchEngine.analyzeTrendsForAllCompanies',
+          company 
+        });
         
         // Add error to search errors for reporting
         this.addSearchError(company, errorMessage);
@@ -313,7 +320,11 @@ export class SearchEngine {
    */
   private async logSearchError(company: string, date: Date, errorMessage: string): Promise<void> {
     const contextMessage = `Search failed for ${company} on ${date.toDateString()}: ${errorMessage}`;
-    await this.errorLogger.logError(contextMessage, 'SearchEngine.searchCompanyForDay');
+    await this.errorLogger.logNetworkError(contextMessage, { 
+      operation: 'SearchEngine.searchCompanyForDay',
+      company,
+      date 
+    });
     
     this.addSearchError(company, contextMessage);
   }

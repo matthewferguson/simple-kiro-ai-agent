@@ -1,5 +1,5 @@
 import { promises as fs } from 'fs';
-import { join, dirname } from 'path';
+import { join } from 'path';
 import { DailySnapshot, serializeDailySnapshot, deserializeDailySnapshot } from '../models/types.js';
 
 /**

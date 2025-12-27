@@ -3,8 +3,7 @@ import {
   CompanyReport,
   ReportSummary,
   TrendAnalysis,
-  DailyMentionCount,
-  TrendClassification
+  DailyMentionCount
 } from '../models/types.js';
 
 /**
