@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import * as fc from 'fast-check';
 import { SearchEngine } from './SearchEngine.js';
 import { SystemConfig, ArticleSource } from '../models/types.js';
 import { promises as fs } from 'fs';
@@ -133,6 +134,109 @@ describe('SearchEngine', () => {
     it('should get search errors', () => {
       const errors = searchEngine.getSearchErrors();
       expect(errors instanceof Map).toBe(true);
+    });
+  });
+
+  describe('property tests', () => {
+    // Feature: company-mention-tracker, Property 3: Complete search coverage
+    it('should make search queries for each company on each of the 7 days', async () => {
+      // Use predefined valid company names
+      const companies = ['Apple', 'Google', 'Microsoft', 'Amazon', 'Tesla'];
+      
+      // Create a fresh SearchEngine instance for this test
+      const testDataDir = './test-data-property-' + Date.now() + '-' + Math.random();
+      const testSearchEngine = new SearchEngine(testDataDir);
+      
+      try {
+        // Create system configuration
+        const config: SystemConfig = {
+          companies,
+          searchPeriodDays: 7,
+          articleSources: [
+            {
+              name: 'Test Source',
+              type: 'api' as const,
+              endpoint: 'https://api.example.com',
+              rateLimit: 60
+            }
+          ],
+          rateLimit: 60
+        };
+        
+        // Initialize the search engine
+        await testSearchEngine.initialize(config);
+        
+        // Spy on the articleFetcher.searchArticles method to track calls
+        const searchArticlesSpy = vi.spyOn(
+          (testSearchEngine as any).articleFetcher,
+          'searchArticles'
+        );
+        
+        // Mock the searchArticles method to return empty results
+        searchArticlesSpy.mockImplementation(async (company: string, date: Date, sources: any[]) => {
+          return []; // Return empty array of articles
+        });
+        
+        // Also spy on other methods that might be called to ensure they don't fail
+        const extractMentionsSpy = vi.spyOn(
+          (testSearchEngine as any).mentionExtractor,
+          'extractMentions'
+        );
+        extractMentionsSpy.mockReturnValue([]);
+        
+        const saveDailySnapshotSpy = vi.spyOn(
+          (testSearchEngine as any).dataStore,
+          'saveDailySnapshot'
+        );
+        saveDailySnapshotSpy.mockResolvedValue(undefined);
+        
+        const getAllSnapshotsSpy = vi.spyOn(
+          (testSearchEngine as any).dataStore,
+          'getAllSnapshots'
+        );
+        getAllSnapshotsSpy.mockResolvedValue([]);
+        
+        const generateReportSpy = vi.spyOn(
+          (testSearchEngine as any).reportGenerator,
+          'generateReport'
+        );
+        generateReportSpy.mockReturnValue({
+          generatedAt: new Date(),
+          searchPeriod: { startDate: new Date(), endDate: new Date() },
+          companies: [],
+          summary: {
+            totalArticlesFound: 0,
+            companiesWithIncreasingTrends: 0,
+            companiesWithDecreasingTrends: 0
+          }
+        });
+        
+        // Execute the search
+        await testSearchEngine.executeSearch();
+        
+        // Verify that searchArticles was called exactly 35 times (5 companies × 7 days)
+        expect(searchArticlesSpy).toHaveBeenCalledTimes(35);
+        
+        // Verify that each company appears in exactly 7 calls (once per day)
+        const companyCalls = new Map<string, number>();
+        for (const call of searchArticlesSpy.mock.calls) {
+          const company = call[0] as string;
+          companyCalls.set(company, (companyCalls.get(company) || 0) + 1);
+        }
+        
+        // Each company should have been searched exactly 7 times (once per day)
+        for (const company of companies) {
+          expect(companyCalls.get(company)).toBe(7);
+        }
+        
+      } finally {
+        // Clean up test data
+        try {
+          await fs.rm(testDataDir, { recursive: true, force: true });
+        } catch (error) {
+          // Ignore cleanup errors
+        }
+      }
     });
   });
 });
