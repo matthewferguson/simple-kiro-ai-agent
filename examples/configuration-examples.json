@@ -1,0 +1,315 @@
+{
+  "development": {
+    "description": "Development configuration using mock sources for fast testing",
+    "articleSources": [
+      {
+        "name": "Mock News Source",
+        "type": "api",
+        "endpoint": "https://mock-api.example.com/articles",
+        "rateLimit": 1000
+      }
+    ],
+    "rateLimit": 100,
+    "dataDir": "./data-dev"
+  },
+  
+  "testing": {
+    "description": "Testing configuration with multiple mock sources",
+    "articleSources": [
+      {
+        "name": "Mock API 1",
+        "type": "api", 
+        "endpoint": "https://mock-api-1.example.com/articles",
+        "rateLimit": 100
+      },
+      {
+        "name": "Mock RSS 1",
+        "type": "rss",
+        "endpoint": "https://mock-rss-1.example.com/feed.xml", 
+        "rateLimit": 60
+      }
+    ],
+    "rateLimit": 50,
+    "dataDir": "./data-test"
+  },
+
+  "production_free": {
+    "description": "Production configuration using free RSS feeds",
+    "articleSources": [
+      {
+        "name": "Reuters Business",
+        "type": "rss",
+        "endpoint": "https://www.reuters.com/business/finance/rss",
+        "rateLimit": 60
+      },
+      {
+        "name": "BBC Business", 
+        "type": "rss",
+        "endpoint": "https://feeds.bbci.co.uk/news/business/rss.xml",
+        "rateLimit": 60
+      },
+      {
+        "name": "TechCrunch",
+        "type": "rss",
+        "endpoint": "https://techcrunch.com/feed/",
+        "rateLimit": 60
+      }
+    ],
+    "rateLimit": 10,
+    "dataDir": "./data"
+  },
+
+  "production_with_newsapi": {
+    "description": "Production configuration with NewsAPI and RSS feeds",
+    "articleSources": [
+      {
+        "name": "NewsAPI",
+        "type": "api",
+        "endpoint": "https://newsapi.org/v2/everything",
+        "apiKey": "${NEWSAPI_KEY}",
+        "rateLimit": 100
+      },
+      {
+        "name": "Reuters Business",
+        "type": "rss", 
+        "endpoint": "https://www.reuters.com/business/finance/rss",
+        "rateLimit": 60
+      },
+      {
+        "name": "BBC Business",
+        "type": "rss",
+        "endpoint": "https://feeds.bbci.co.uk/news/business/rss.xml",
+        "rateLimit": 60
+      }
+    ],
+    "rateLimit": 30,
+    "dataDir": "./data"
+  },
+
+  "high_volume": {
+    "description": "High-volume configuration for premium usage",
+    "articleSources": [
+      {
+        "name": "NewsAPI Premium",
+        "type": "api",
+        "endpoint": "https://newsapi.org/v2/everything", 
+        "apiKey": "${NEWSAPI_KEY}",
+        "rateLimit": 500
+      },
+      {
+        "name": "Reuters Business",
+        "type": "rss",
+        "endpoint": "https://www.reuters.com/business/finance/rss",
+        "rateLimit": 120
+      },
+      {
+        "name": "BBC Business",
+        "type": "rss", 
+        "endpoint": "https://feeds.bbci.co.uk/news/business/rss.xml",
+        "rateLimit": 120
+      },
+      {
+        "name": "CNN Business",
+        "type": "rss",
+        "endpoint": "http://rss.cnn.com/rss/money_latest.rss",
+        "rateLimit": 120
+      },
+      {
+        "name": "TechCrunch",
+        "type": "rss",
+        "endpoint": "https://techcrunch.com/feed/",
+        "rateLimit": 120
+      }
+    ],
+    "rateLimit": 100,
+    "dataDir": "./data"
+  },
+
+  "custom_companies": {
+    "description": "Example with different company sets",
+    "examples": [
+      {
+        "name": "Tech Giants",
+        "companies": ["Apple", "Microsoft", "Google", "Amazon", "Meta"]
+      },
+      {
+        "name": "Streaming Services", 
+        "companies": ["Netflix", "Disney", "Spotify", "Hulu", "Paramount"]
+      },
+      {
+        "name": "Electric Vehicles",
+        "companies": ["Tesla", "Rivian", "Lucid", "NIO", "BYD"]
+      },
+      {
+        "name": "Social Media",
+        "companies": ["Meta", "Twitter", "Snapchat", "TikTok", "LinkedIn"]
+      },
+      {
+        "name": "Cloud Providers",
+        "companies": ["Amazon", "Microsoft", "Google", "IBM", "Oracle"]
+      }
+    ]
+  },
+
+  "cli_examples": {
+    "description": "Command-line usage examples",
+    "examples": [
+      {
+        "name": "Basic search",
+        "command": "node dist/cli.js search -c \"Apple\" \"Microsoft\" \"Google\" \"Amazon\" \"Tesla\""
+      },
+      {
+        "name": "HTML report with custom rate limit",
+        "command": "node dist/cli.js search -c \"Apple\" \"Microsoft\" \"Google\" \"Amazon\" \"Tesla\" -o report.html -f html -r 5"
+      },
+      {
+        "name": "Custom data directory",
+        "command": "node dist/cli.js search -c \"Apple\" \"Microsoft\" \"Google\" \"Amazon\" \"Tesla\" -d ./custom-data"
+      },
+      {
+        "name": "With NewsAPI source",
+        "command": "node dist/cli.js search -c \"Apple\" \"Microsoft\" \"Google\" \"Amazon\" \"Tesla\" --sources '{\"name\":\"NewsAPI\",\"type\":\"api\",\"endpoint\":\"https://newsapi.org/v2/everything\",\"apiKey\":\"your-key\",\"rateLimit\":100}'"
+      },
+      {
+        "name": "Multiple custom sources",
+        "command": "node dist/cli.js search -c \"Apple\" \"Microsoft\" \"Google\" \"Amazon\" \"Tesla\" --sources '{\"name\":\"NewsAPI\",\"type\":\"api\",\"endpoint\":\"https://newsapi.org/v2/everything\",\"apiKey\":\"key1\",\"rateLimit\":100}' --sources '{\"name\":\"Reuters\",\"type\":\"rss\",\"endpoint\":\"https://www.reuters.com/business/finance/rss\",\"rateLimit\":60}'"
+      },
+      {
+        "name": "Validate companies only",
+        "command": "node dist/cli.js validate -c \"Netflix\" \"Spotify\" \"Uber\" \"Airbnb\" \"Zoom\""
+      },
+      {
+        "name": "Clear data",
+        "command": "node dist/cli.js clear-data -d ./data"
+      }
+    ]
+  },
+
+  "environment_variables": {
+    "description": "Environment variable examples",
+    "examples": [
+      {
+        "name": "NewsAPI configuration",
+        "variables": {
+          "NEWSAPI_KEY": "your-newsapi-key-here"
+        }
+      },
+      {
+        "name": "Custom data directory",
+        "variables": {
+          "DATA_DIR": "./custom-data"
+        }
+      },
+      {
+        "name": "Debug logging",
+        "variables": {
+          "LOG_LEVEL": "debug"
+        }
+      },
+      {
+        "name": "Memory optimization",
+        "variables": {
+          "NODE_OPTIONS": "--max-old-space-size=4096"
+        }
+      },
+      {
+        "name": "Complete configuration",
+        "variables": {
+          "NEWSAPI_KEY": "your-newsapi-key-here",
+          "DATA_DIR": "./production-data",
+          "LOG_LEVEL": "info",
+          "NODE_OPTIONS": "--max-old-space-size=2048"
+        }
+      }
+    ]
+  },
+
+  "rate_limiting_strategies": {
+    "description": "Rate limiting configuration examples",
+    "strategies": [
+      {
+        "name": "Conservative (Free Tier)",
+        "rateLimit": 5,
+        "description": "Safe for free API tiers and RSS feeds",
+        "useCase": "Development, testing, free NewsAPI tier"
+      },
+      {
+        "name": "Moderate (Paid APIs)",
+        "rateLimit": 30,
+        "description": "Balanced performance for paid services",
+        "useCase": "Production with paid NewsAPI, multiple RSS feeds"
+      },
+      {
+        "name": "Aggressive (Premium)",
+        "rateLimit": 100,
+        "description": "High performance for premium services",
+        "useCase": "Premium NewsAPI, high-volume production"
+      },
+      {
+        "name": "Custom per source",
+        "description": "Different limits per article source",
+        "example": {
+          "NewsAPI": 200,
+          "Reuters": 60,
+          "BBC": 60,
+          "TechCrunch": 60
+        }
+      }
+    ]
+  },
+
+  "troubleshooting_configurations": {
+    "description": "Configurations for common troubleshooting scenarios",
+    "scenarios": [
+      {
+        "name": "Network connectivity issues",
+        "configuration": {
+          "articleSources": [
+            {
+              "name": "Mock Source",
+              "type": "api",
+              "endpoint": "https://mock-api.example.com",
+              "rateLimit": 1000
+            }
+          ],
+          "rateLimit": 10
+        },
+        "description": "Use mock sources to test without network dependencies"
+      },
+      {
+        "name": "Rate limit debugging",
+        "configuration": {
+          "rateLimit": 1,
+          "environment": {
+            "LOG_LEVEL": "debug"
+          }
+        },
+        "description": "Very low rate limit with debug logging to observe rate limiting behavior"
+      },
+      {
+        "name": "Memory issues",
+        "configuration": {
+          "environment": {
+            "NODE_OPTIONS": "--max-old-space-size=8192"
+          },
+          "rateLimit": 5
+        },
+        "description": "Increased memory limit with conservative rate limiting"
+      },
+      {
+        "name": "Source validation",
+        "configuration": {
+          "articleSources": [
+            {
+              "name": "Test Source",
+              "type": "rss",
+              "endpoint": "https://httpbin.org/xml",
+              "rateLimit": 10
+            }
+          ]
+        },
+        "description": "Use httpbin.org to test RSS parsing without real news sources"
+      }
+    ]
+  }
+}

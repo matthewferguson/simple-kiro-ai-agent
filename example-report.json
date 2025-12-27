@@ -1,0 +1,234 @@
+{
+  "generatedAt": "2025-12-27T07:11:57.693Z",
+  "searchPeriod": {
+    "startDate": "2025-12-21T07:09:24.600Z",
+    "endDate": "2025-12-27T07:09:24.600Z"
+  },
+  "companies": [
+    {
+      "company": "Amazon",
+      "trendAnalysis": {
+        "company": "Amazon",
+        "classification": "stable",
+        "statistics": {
+          "totalMentions": 0,
+          "averageDaily": 0,
+          "percentageChange": 0,
+          "standardDeviation": 0
+        },
+        "dailyBreakdown": [
+          {
+            "date": "2025-12-21T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-22T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-23T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-24T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-25T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-26T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-27T07:09:24.600Z",
+            "count": 0
+          }
+        ]
+      },
+      "status": "complete"
+    },
+    {
+      "company": "Apple",
+      "trendAnalysis": {
+        "company": "Apple",
+        "classification": "stable",
+        "statistics": {
+          "totalMentions": 0,
+          "averageDaily": 0,
+          "percentageChange": 0,
+          "standardDeviation": 0
+        },
+        "dailyBreakdown": [
+          {
+            "date": "2025-12-21T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-22T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-23T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-24T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-25T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-26T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-27T07:09:24.600Z",
+            "count": 0
+          }
+        ]
+      },
+      "status": "complete"
+    },
+    {
+      "company": "Google",
+      "trendAnalysis": {
+        "company": "Google",
+        "classification": "stable",
+        "statistics": {
+          "totalMentions": 0,
+          "averageDaily": 0,
+          "percentageChange": 0,
+          "standardDeviation": 0
+        },
+        "dailyBreakdown": [
+          {
+            "date": "2025-12-21T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-22T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-23T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-24T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-25T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-26T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-27T07:09:24.600Z",
+            "count": 0
+          }
+        ]
+      },
+      "status": "complete"
+    },
+    {
+      "company": "Microsoft",
+      "trendAnalysis": {
+        "company": "Microsoft",
+        "classification": "stable",
+        "statistics": {
+          "totalMentions": 0,
+          "averageDaily": 0,
+          "percentageChange": 0,
+          "standardDeviation": 0
+        },
+        "dailyBreakdown": [
+          {
+            "date": "2025-12-21T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-22T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-23T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-24T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-25T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-26T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-27T07:09:24.600Z",
+            "count": 0
+          }
+        ]
+      },
+      "status": "complete"
+    },
+    {
+      "company": "Tesla",
+      "trendAnalysis": {
+        "company": "Tesla",
+        "classification": "stable",
+        "statistics": {
+          "totalMentions": 0,
+          "averageDaily": 0,
+          "percentageChange": 0,
+          "standardDeviation": 0
+        },
+        "dailyBreakdown": [
+          {
+            "date": "2025-12-21T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-22T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-23T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-24T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-25T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-26T07:09:24.600Z",
+            "count": 0
+          },
+          {
+            "date": "2025-12-27T07:09:24.600Z",
+            "count": 0
+          }
+        ]
+      },
+      "status": "complete"
+    }
+  ],
+  "summary": {
+    "totalArticlesFound": 0,
+    "companiesWithIncreasingTrends": 0,
+    "companiesWithDecreasingTrends": 0
+  }
+}
