@@ -167,11 +167,11 @@ This implementation plan tracks the development of a Company Mention Tracker sys
   - Implement error aggregation for reports
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ]* 9.1 Write property test for error logging completeness
+- [x] 9.1 Write property test for error logging completeness
   - **Property 15: Error logging completeness**
   - **Validates: Requirements 6.1**
 
-- [ ]* 9.2 Write property test for graceful continuation
+- [x] 9.2 Write property test for graceful continuation
   - **Property 17: Graceful continuation on source failure**
   - **Validates: Requirements 6.4**
 

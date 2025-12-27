@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import * as fc from 'fast-check';
 import { ErrorLogger, ErrorSeverity, ErrorCategory } from './ErrorLogger.js';
 import { promises as fs } from 'fs';
 
@@ -198,6 +199,111 @@ describe('ErrorLogger', () => {
       
       logger.clearLogs();
       expect(logger.getLogEntries()).toHaveLength(0);
+    });
+  });
+
+  // Property-based tests
+  describe('Property-based tests', () => {
+    it('Property 15: Error logging completeness - For any search failure, the error log should contain both the timestamp and the company name', async () => {
+      // Feature: company-mention-tracker, Property 15: Error logging completeness
+      // **Validates: Requirements 6.1**
+      
+      // Generate arbitrary error scenarios with company context
+      const errorScenarioArbitrary = fc.record({
+        severity: fc.constantFrom(...Object.values(ErrorSeverity)),
+        category: fc.constantFrom(...Object.values(ErrorCategory)),
+        message: fc.string({ minLength: 1, maxLength: 200 }).filter(s => s.trim().length > 0),
+        companyName: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+        source: fc.option(fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0)),
+        operation: fc.option(fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0)),
+        date: fc.option(fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })),
+        error: fc.option(fc.record({
+          name: fc.string({ minLength: 1, maxLength: 30 }),
+          message: fc.string({ minLength: 1, maxLength: 100 })
+        }).map(({ name, message }) => {
+          const error = new Error(message);
+          error.name = name;
+          return error;
+        }))
+      });
+
+      await fc.assert(
+        fc.asyncProperty(errorScenarioArbitrary, async (scenario) => {
+          const testLogger = new ErrorLogger();
+          const beforeTimestamp = new Date();
+          
+          // When logging any error with company context
+          await testLogger.logError(
+            scenario.severity,
+            scenario.category,
+            scenario.message,
+            {
+              company: scenario.companyName,
+              source: scenario.source || undefined,
+              operation: scenario.operation || undefined,
+              date: scenario.date || undefined
+            },
+            scenario.error || undefined
+          );
+          
+          const afterTimestamp = new Date();
+          const logEntries = testLogger.getLogEntries();
+          
+          // Property: The log should contain exactly one entry
+          if (logEntries.length !== 1) {
+            return false;
+          }
+          
+          const logEntry = logEntries[0];
+          
+          // Property: The log entry should contain both timestamp and company name
+          if (!(logEntry.timestamp instanceof Date)) {
+            return false;
+          }
+          
+          if (logEntry.timestamp.getTime() < beforeTimestamp.getTime() || 
+              logEntry.timestamp.getTime() > afterTimestamp.getTime()) {
+            return false;
+          }
+          
+          if (logEntry.context.company !== scenario.companyName) {
+            return false;
+          }
+          
+          // Property: The log entry should preserve all other provided information
+          if (logEntry.severity !== scenario.severity) {
+            return false;
+          }
+          
+          if (logEntry.category !== scenario.category) {
+            return false;
+          }
+          
+          if (logEntry.message !== scenario.message) {
+            return false;
+          }
+          
+          // Property: Optional context should be preserved when provided
+          if (scenario.source && logEntry.context.source !== scenario.source) {
+            return false;
+          }
+          
+          if (scenario.operation && logEntry.context.operation !== scenario.operation) {
+            return false;
+          }
+          
+          if (scenario.date && logEntry.context.date !== scenario.date) {
+            return false;
+          }
+          
+          if (scenario.error && logEntry.error !== scenario.error) {
+            return false;
+          }
+          
+          return true;
+        }),
+        { numRuns: 100 }
+      );
     });
   });
 });

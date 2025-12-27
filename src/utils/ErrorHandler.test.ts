@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import * as fc from 'fast-check';
 import { ErrorHandler, GracefulDegradationOptions } from './ErrorHandler.js';
 import { ErrorLogger, ErrorSeverity, ErrorCategory } from './ErrorLogger.js';
 
@@ -332,6 +333,114 @@ describe('ErrorHandler', () => {
           'test'
         )).rejects.toThrow();
       }
+    });
+  });
+
+  // Property-based tests
+  describe('Property-based tests', () => {
+    it('Property 17: Graceful continuation on source failure - For any article source failure, the system should continue processing remaining companies and include all companies in the final report', async () => {
+      // Feature: company-mention-tracker, Property 17: Graceful continuation on source failure
+      // **Validates: Requirements 6.4**
+      
+      // Generate scenarios with companies and source failures
+      const gracefulContinuationScenario = fc.record({
+        companies: fc.array(
+          fc.string({ minLength: 1, maxLength: 30 }).filter(s => s.trim().length > 0),
+          { minLength: 2, maxLength: 5 }
+        ).map(companies => [...new Set(companies)]), // Ensure unique companies
+        failingSource: fc.string({ minLength: 1, maxLength: 20 }).filter(s => s.trim().length > 0),
+        errorMessage: fc.string({ minLength: 5, maxLength: 100 }).filter(s => s.trim().length > 0)
+      }).filter(scenario => scenario.companies.length >= 2);
+
+      await fc.assert(
+        fc.asyncProperty(gracefulContinuationScenario, async (scenario) => {
+          const testHandler = new ErrorHandler(errorLogger, {
+            continueOnError: true,
+            maxFailuresPerCompany: 10,
+            maxFailuresPerSource: 10,
+            requireMinimumData: false,
+            minimumSuccessRate: 0.0
+          });
+
+          // Simulate a source failure that affects multiple companies
+          const sourceError = new Error(`network: ${scenario.errorMessage}`);
+          const companiesProcessedAfterFailure = new Set<string>();
+          
+          // Test the core property: when a source fails, processing should continue for remaining companies
+          for (let i = 0; i < scenario.companies.length; i++) {
+            const company = scenario.companies[i];
+            
+            // Simulate source failure for this company
+            const shouldContinue = await testHandler.handleSourceFailure(
+              scenario.failingSource,
+              sourceError,
+              { company, source: scenario.failingSource }
+            );
+            
+            // Property: Non-blocking source failures should allow continuation
+            const isBlockingError = sourceError.message.toLowerCase().includes('blocked') || 
+                                  sourceError.message.toLowerCase().includes('access denied') ||
+                                  sourceError.message.toLowerCase().includes('bot detected') ||
+                                  sourceError.message.toLowerCase().includes('captcha');
+            
+            if (!isBlockingError) {
+              // For non-blocking errors, the system should continue processing
+              if (!shouldContinue) {
+                return false; // This violates the graceful continuation property
+              }
+              
+              // Mark this company as processed (even with errors)
+              companiesProcessedAfterFailure.add(company);
+            }
+          }
+          
+          // Property: All companies should be processable despite source failures
+          // This is the core of "graceful continuation" - no company is left out
+          if (companiesProcessedAfterFailure.size !== scenario.companies.length) {
+            return false;
+          }
+          
+          // Property: Error aggregation should track all affected companies and sources
+          const errorAggregation = testHandler.getErrorAggregation();
+          
+          // All companies should be in the error aggregation (they all had the source fail)
+          const companiesInAggregation = new Set(errorAggregation.companiesWithErrors.keys());
+          for (const company of scenario.companies) {
+            if (!companiesInAggregation.has(company)) {
+              return false;
+            }
+          }
+          
+          // The failing source should be tracked
+          const sourcesInAggregation = new Set(errorAggregation.sourcesWithErrors.keys());
+          if (!sourcesInAggregation.has(scenario.failingSource)) {
+            return false;
+          }
+          
+          // Property: Each company should have error records for the failing source
+          for (const company of scenario.companies) {
+            const companyErrors = testHandler.getCompanyErrors(company);
+            if (companyErrors.length === 0) {
+              return false;
+            }
+            
+            // At least one error should be from our failing source
+            const hasSourceError = companyErrors.some(error => error.source === scenario.failingSource);
+            if (!hasSourceError) {
+              return false;
+            }
+          }
+          
+          // Property: The failing source should have error records for all companies
+          const sourceErrors = testHandler.getSourceErrors(scenario.failingSource);
+          if (sourceErrors.length !== scenario.companies.length) {
+            return false;
+          }
+          
+          return true;
+        }),
+        { numRuns: 100 }
+      );
     });
   });
 });
