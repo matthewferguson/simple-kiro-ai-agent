@@ -1,5 +1,19 @@
-// Utility functions
-// Will be implemented in subsequent tasks
+// Utility functions for error handling and logging
 
-// Export placeholder to make this a proper module
-export {};
+// Error logging utilities
+export {
+  ErrorLogger,
+  ErrorSeverity,
+  ErrorCategory,
+  type ErrorLogEntry,
+  type ErrorContext,
+  type ErrorSummary
+} from './ErrorLogger.js';
+
+// Error handling and graceful degradation utilities
+export {
+  ErrorHandler,
+  type OperationResult,
+  type GracefulDegradationOptions,
+  type ErrorAggregation
+} from './ErrorHandler.js';
