@@ -196,7 +196,7 @@ This implementation plan tracks the development of a Company Mention Tracker sys
   - **Property 19: Source validation**
   - **Validates: Requirements 7.3**
 
-- [ ]* 10.4 Write property test for multi-source aggregation
+- [x] 10.4 Write property test for multi-source aggregation
   - **Property 20: Multi-source aggregation**
   - **Validates: Requirements 7.4**
 

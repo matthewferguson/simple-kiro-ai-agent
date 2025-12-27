@@ -442,5 +442,124 @@ describe('SearchEngine', () => {
         { numRuns: 100 }
       );
     });
+
+    // Feature: company-mention-tracker, Property 20: Multi-source aggregation
+    it('should aggregate search results from all accessible configured article sources', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          // Generate multiple article sources with different names
+          fc.array(
+            fc.record({
+              name: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+              type: fc.constantFrom('api', 'rss', 'scraper') as fc.Arbitrary<'api' | 'rss' | 'scraper'>,
+              endpoint: fc.webUrl(),
+              rateLimit: fc.integer({ min: 1, max: 1000 })
+            }),
+            { minLength: 2, maxLength: 4 } // At least 2 sources to test aggregation
+          ).filter(sources => {
+            // Ensure all source names are unique
+            const names = sources.map(s => s.name);
+            return new Set(names).size === names.length;
+          }),
+          // Generate a company name to search for
+          fc.constantFrom('Apple', 'Google', 'Microsoft', 'Amazon', 'Tesla'),
+          async (articleSources, company) => {
+            // Create a fresh SearchEngine instance for this test
+            const testDataDir = './test-data-property-' + Date.now() + '-' + Math.random();
+            const testSearchEngine = new SearchEngine(testDataDir);
+            
+            try {
+              // Create system configuration with generated article sources
+              const config: SystemConfig = {
+                companies: ['Apple', 'Google', 'Microsoft', 'Amazon', 'Tesla'],
+                searchPeriodDays: 7,
+                articleSources,
+                rateLimit: 60
+              };
+              
+              // Initialize the search engine
+              await testSearchEngine.initialize(config);
+              
+              // Mock the ArticleFetcher to track which sources are called and return test data
+              const articleFetcher = (testSearchEngine as any).articleFetcher;
+              const originalSearchSingleSource = articleFetcher.searchSingleSource;
+              
+              // Track which sources were called and their results
+              const sourceCalls: Map<string, Article[]> = new Map();
+              
+              // Mock searchSingleSource to return different articles for each source
+              articleFetcher.searchSingleSource = vi.fn().mockImplementation(
+                async (companyName: string, date: Date, source: ArticleSource) => {
+                  // Generate unique articles for each source
+                  const articles: Article[] = [
+                    {
+                      title: `${companyName} news from ${source.name}`,
+                      url: `https://${source.name.toLowerCase().replace(/\s+/g, '')}.com/article-${Date.now()}`,
+                      publishedDate: date,
+                      source: source.name,
+                      excerpt: `This is an article about ${companyName} from ${source.name}`
+                    }
+                  ];
+                  
+                  // Track that this source was called and what it returned
+                  sourceCalls.set(source.name, articles);
+                  
+                  return articles;
+                }
+              );
+              
+              // Execute a search for the company on a specific date
+              const searchDate = new Date();
+              const results = await articleFetcher.searchArticles(company, searchDate, articleSources);
+              
+              // Verify that all sources were called
+              expect(sourceCalls.size).toBe(articleSources.length);
+              
+              // Verify that each source was called exactly once
+              for (const source of articleSources) {
+                expect(sourceCalls.has(source.name)).toBe(true);
+              }
+              
+              // Verify that results include articles from all sources
+              expect(results.length).toBe(articleSources.length); // One article per source
+              
+              // Verify that each source contributed to the results
+              const resultSources = new Set(results.map(article => article.source));
+              const expectedSources = new Set(articleSources.map(source => source.name));
+              
+              expect(resultSources.size).toBe(expectedSources.size);
+              for (const expectedSource of expectedSources) {
+                expect(resultSources.has(expectedSource)).toBe(true);
+              }
+              
+              // Verify that articles from different sources are properly aggregated
+              for (let i = 0; i < results.length; i++) {
+                const article = results[i];
+                const sourceArticles = sourceCalls.get(article.source);
+                
+                expect(sourceArticles).toBeDefined();
+                expect(sourceArticles!.some(sa => 
+                  sa.title === article.title && 
+                  sa.url === article.url && 
+                  sa.source === article.source
+                )).toBe(true);
+              }
+              
+              // Restore original method
+              articleFetcher.searchSingleSource = originalSearchSingleSource;
+              
+            } finally {
+              // Clean up test data
+              try {
+                await fs.rm(testDataDir, { recursive: true, force: true });
+              } catch (error) {
+                // Ignore cleanup errors
+              }
+            }
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
   });
 });
