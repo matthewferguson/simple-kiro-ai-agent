@@ -17,3 +17,6 @@ export {
   type GracefulDegradationOptions,
   type ErrorAggregation
 } from './ErrorHandler.js';
+
+// Article source configuration utilities
+export { SourceConfigHelper } from './SourceConfigHelper.js';
